@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://floresdyd.com/sitemap.xml
+
+# Disallow admin and sensitive areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /storage/
+Disallow: /_debugbar/
+Disallow: /telescope/
+Disallow: /horizon/
+
+# Allow CSS and JS for rendering
+Allow: /build/
+Allow: /images/
+Allow: /fonts/

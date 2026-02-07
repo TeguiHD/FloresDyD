@@ -1,0 +1,21 @@
+Pendientes para activar cuando existan productos cargados
+
+1. Incluir productos en sitemap
+   - Agregar URLs de producto en `/sitemap.xml` con `route('producto', $product->slug)`
+   - Definir `lastmod` con `updated_at` del producto
+   - Prioridad sugerida: 0.7
+
+2. Schema Product en páginas de producto
+   - `@type: Product` con `name`, `image`, `description`, `sku`
+   - `offers` con `price`, `priceCurrency`, `availability`
+   - `aggregateRating` si hay reseñas
+
+3. BreadcrumbList en páginas de producto
+   - Inicio > Colección > Categoría > Producto
+
+4. Meta OG/Twitter por producto
+   - `og:title`, `og:description`, `og:image` dinámicos
+
+5. Datos estructurados en listados
+   - `ItemList` para categorías y colección
+
