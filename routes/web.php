@@ -2,6 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Livewire\Pages\Home;
 use App\Livewire\Pages\Coleccion;
 use App\Livewire\Pages\ColeccionCategoria;
@@ -14,7 +16,17 @@ use App\Livewire\Pages\Checkout;
 use App\Livewire\Pages\CheckoutSuccess;
 use App\Livewire\Pages\Search;
 use App\Livewire\Pages\TrackOrder;
+use App\Livewire\Auth\Login as CustomerLogin;
+use App\Livewire\Auth\Register as CustomerRegister;
+use App\Livewire\Auth\ForgotPassword;
+use App\Livewire\Auth\ResetPassword;
+use App\Livewire\Account\Dashboard as AccountDashboard;
+use App\Livewire\Account\Orders as AccountOrders;
+use App\Livewire\Account\OrderShow as AccountOrderShow;
+use App\Models\Order;
+use App\Models\PaymentProof;
 use App\Models\Category;
+use App\Services\AuditService;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,21 +68,60 @@ Route::get('/contacto', Contacto::class)->name('contacto');
 // Búsqueda
 Route::get('/buscar', Search::class)->name('search');
 
-// Login (evitar error Fortify si no está configurado)
-Route::get('/login', function () {
-    return redirect()->route('admin.login');
-})->name('login');
+// =========================================
+// AUTENTICACIÓN CLIENTES
+// =========================================
+
+Route::get('/login', CustomerLogin::class)->middleware('guest')->name('login');
+Route::get('/registro', CustomerRegister::class)->middleware('guest')->name('register');
+Route::get('/register', function () {
+    return redirect()->route('register');
+});
+Route::get('/olvide-mi-contrasena', ForgotPassword::class)->middleware('guest')->name('password.request');
+Route::get('/reset-password/{token}', ResetPassword::class)->middleware('guest')->name('password.reset');
+
+Route::post('/logout', function () {
+    AuditService::logout();
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect()->route('home');
+})->middleware('auth')->name('logout');
 
 // =========================================
 // CHECKOUT (Sin autenticación requerida)
 // =========================================
 
 Route::get('/checkout', Checkout::class)->name('checkout');
-Route::get('/checkout/exito/{order}', CheckoutSuccess::class)->name('checkout.success');
+Route::get('/checkout/exito/{order}', CheckoutSuccess::class)
+    ->middleware('signed')
+    ->name('checkout.success');
 
 // Rastrear pedido
 Route::get('/rastrear-pedido', TrackOrder::class)->name('track.order');
 Route::get('/rastrear-pedido/{tracking_code}', TrackOrder::class)->name('track.order.code');
+
+// =========================================
+// CUENTA DEL CLIENTE
+// =========================================
+
+Route::middleware('auth')->prefix('mi-cuenta')->name('account.')->group(function () {
+    Route::get('/', AccountDashboard::class)->name('dashboard');
+    Route::get('/pedidos', AccountOrders::class)->name('orders');
+    Route::get('/pedidos/{order}', AccountOrderShow::class)->name('orders.show');
+
+    Route::get('/pedidos/{order}/comprobantes/{proof}', function (Order $order, PaymentProof $proof) {
+        abort_unless($order->user_id === auth()->id(), 403);
+        abort_unless($proof->order_id === $order->id, 404);
+
+        $disk = Storage::disk('local');
+        if (!$disk->exists($proof->file_path)) {
+            abort(404);
+        }
+
+        return $disk->download($proof->file_path, $proof->original_filename);
+    })->name('orders.proof');
+});
 
 // =========================================
 // PÁGINAS LEGALES
@@ -79,7 +130,6 @@ Route::get('/rastrear-pedido/{tracking_code}', TrackOrder::class)->name('track.o
 Route::view('/aviso-de-privacidad', 'pages.politica-privacidad')->name('aviso-privacidad');
 Route::view('/terminos-y-condiciones', 'pages.terminos-condiciones')->name('terminos');
 Route::view('/politica-de-envios', 'pages.politica-envios')->name('politica-envios');
-Route::view('/flores-a-domicilio-valdivia', 'pages.flores-domicilio-valdivia')->name('flores.valdivia');
 Route::view('/flores-a-domicilio-santiago', 'pages.flores-domicilio-santiago')->name('flores.santiago');
 
 // =========================================
@@ -129,7 +179,6 @@ Route::get('/sitemap.xml', function () {
         route('politica-envios'),
         route('aviso-privacidad'),
         route('terminos'),
-        route('flores.valdivia'),
         route('flores.santiago'),
     ];
 
@@ -167,6 +216,11 @@ Route::get('/robots.txt', function () {
         'Disallow: /admin',
         'Disallow: /checkout',
         'Disallow: /login',
+        'Disallow: /registro',
+        'Disallow: /register',
+        'Disallow: /olvide-mi-contrasena',
+        'Disallow: /reset-password',
+        'Disallow: /mi-cuenta',
         'Disallow: /api',
         'Allow: /',
         "Sitemap: {$baseUrl}/sitemap.xml",

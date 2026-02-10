@@ -245,13 +245,13 @@
                                 </details>
                                 <details class="bg-white border border-ink/10 rounded-lg p-5">
                                     <summary class="flex items-center justify-between cursor-pointer font-semibold text-ink">
-                                        ¿Puedo pedir entrega en Valdivia o Santiago?
+                                        ¿Puedo pedir entrega en Santiago?
                                         <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                         </svg>
                                     </summary>
                                     <p class="text-sm text-ink/70 mt-3">
-                                        Sí. Cubrimos Valdivia y Santiago con zonas aledañas según disponibilidad.
+                                        Sí. Cubrimos Santiago y zonas aledañas según disponibilidad.
                                     </p>
                                 </details>
                             </div>
@@ -301,10 +301,10 @@
         },
         {
             "@@type": "Question",
-            "name": "¿Puedo pedir entrega en Valdivia o Santiago?",
+            "name": "¿Puedo pedir entrega en Santiago?",
             "acceptedAnswer": {
                 "@@type": "Answer",
-                "text": "Sí. Cubrimos Valdivia y Santiago con zonas aledañas según disponibilidad."
+                "text": "Sí. Cubrimos Santiago y zonas aledañas según disponibilidad."
             }
         }
     ]

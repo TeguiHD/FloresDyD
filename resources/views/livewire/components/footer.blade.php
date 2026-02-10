@@ -105,7 +105,6 @@
                         <li><a href="{{ route('contacto') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Contacto</a></li>
                         <li><a href="{{ route('ocasiones') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Ocasiones</a></li>
                         <li><a href="{{ route('politica-envios') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Envíos</a></li>
-                        <li><a href="{{ route('flores.valdivia') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Flores en Valdivia</a></li>
                         <li><a href="{{ route('flores.santiago') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Flores en Santiago</a></li>
                     </ul>
                 </div>

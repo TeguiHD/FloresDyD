@@ -82,7 +82,7 @@
             "streetAddress": "{{ \App\Models\SiteSetting::getValue('contact.address', config('flores.address')) }}",
             "addressCountry": "CL"
         },
-        "areaServed": ["Valdivia", "Santiago", "Región de Los Ríos", "Región Metropolitana"],
+        "areaServed": ["Santiago", "Región Metropolitana"],
         "sameAs": [
             "{{ config('flores.social.facebook') }}",
             "{{ config('flores.social.instagram') }}",

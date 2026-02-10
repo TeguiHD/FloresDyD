@@ -21,7 +21,7 @@ class Home extends Component
     public function render()
     {
         // Productos destacados (Bestsellers)
-        $featuredProducts = Product::with('category')
+        $featuredProducts = Product::with(['category', 'activeVariants'])
             ->active()
             ->where('is_featured', true)
             ->orderByDesc('sales_count')
@@ -29,7 +29,7 @@ class Home extends Component
             ->get();
         
         // Productos nuevos
-        $newProducts = Product::with('category')
+        $newProducts = Product::with(['category', 'activeVariants'])
             ->active()
             ->where('is_new', true)
             ->latest()
@@ -52,7 +52,7 @@ class Home extends Component
             ->get();
         
         // Ofertas activas
-        $dealsProducts = Product::with('category')
+        $dealsProducts = Product::with(['category', 'activeVariants'])
             ->active()
             ->whereNotNull('discount_percentage')
             ->where('discount_percentage', '>', 0)
@@ -67,8 +67,8 @@ class Home extends Component
             'testimonials' => $testimonials,
             'dealsProducts' => $dealsProducts,
         ])->layout('layouts.app', [
-            'title' => 'Flores D&D | Arreglos Florales Artesanales en Valdivia y Santiago',
-            'description' => 'Descubre arreglos florales únicos para cada ocasión especial. Entrega el mismo día en Valdivia y Santiago. ¡Sorprende con flores frescas!',
+            'title' => 'Flores D&D | Arreglos Florales Artesanales en Santiago',
+            'description' => 'Descubre arreglos florales únicos para cada ocasión especial. Entrega el mismo día en Santiago. ¡Sorprende con flores frescas!',
         ]);
     }
 }
