@@ -6,7 +6,7 @@
             {{-- Header --}}
             <div class="text-center mb-8">
                 <h1 class="font-serif text-3xl lg:text-4xl text-primary mb-4">Rastrear Pedido</h1>
-                <p class="text-dark/70">Ingresa tu número de pedido o código de rastreo</p>
+                <p class="text-dark/70">Ingresa tu código de rastreo</p>
             </div>
 
             {{-- Formulario de búsqueda --}}
@@ -15,7 +15,7 @@
                     <input 
                         type="text"
                         wire:model="trackingCode"
-                        placeholder="Ej: FDD-123456"
+                        placeholder="Ej: TRK-1A2B3C4D"
                         class="flex-1 px-4 py-3 border border-secondary rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     >
                     <button 

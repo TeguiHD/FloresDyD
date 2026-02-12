@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -19,11 +20,13 @@ class OrderDeliveredMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public Order $order
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(config('mail.aliases.pedidos', 'pedidos@floresdyd.cl'), config('app.name')),
             subject: "🌸 ¡Pedido entregado! - #{$this->order->order_number}",
         );
     }

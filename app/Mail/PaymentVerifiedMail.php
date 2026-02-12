@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -19,11 +20,13 @@ class PaymentVerifiedMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public Order $order
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(config('mail.aliases.pedidos', 'pedidos@floresdyd.cl'), config('app.name')),
             subject: "✅ Pago confirmado - Pedido #{$this->order->order_number}",
         );
     }
@@ -35,8 +38,8 @@ class PaymentVerifiedMail extends Mailable implements ShouldQueue
             with: [
                 'order' => $this->order,
                 'customerName' => $this->order->customer_name,
-                'total' => number_format($this->order->total / 100, 0, ',', '.'),
-                'deliveryDate' => $this->order->delivery_date?->format('d/m/Y'),
+                'total' => number_format($this->order->total, 0, ',', '.'),
+                'deliveryDate' => $this->order->delivery_date ? \Illuminate\Support\Carbon::parse($this->order->delivery_date)->format('d/m/Y') : null,
                 'deliveryTimeSlot' => $this->order->delivery_time_slot,
             ],
         );

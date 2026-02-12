@@ -34,7 +34,8 @@ class ColeccionCategoria extends Component
         $query = Product::query()
             ->where('is_active', true)
             ->where('category_id', $this->category->id)
-            ->where('stock', '>', 0);
+            ->inStock()
+            ->with('activeVariants');
 
         $query = match($this->sort) {
             'price_asc' => $query->orderBy('price', 'asc'),

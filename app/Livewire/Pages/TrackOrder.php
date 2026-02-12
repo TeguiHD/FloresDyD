@@ -30,12 +30,11 @@ class TrackOrder extends Component
     public function search(): void
     {
         $this->validate();
+        $this->trackingCode = strtoupper(trim($this->trackingCode));
         $this->searched = true;
         $this->errorMessage = null;
 
-        $this->order = Order::where('tracking_code', $this->trackingCode)
-            ->orWhere('order_number', $this->trackingCode)
-            ->first();
+        $this->order = Order::where('tracking_code', $this->trackingCode)->first();
 
         if (!$this->order) {
             $this->errorMessage = 'No encontramos ningún pedido con ese código. Verifica que esté escrito correctamente.';
@@ -45,14 +44,19 @@ class TrackOrder extends Component
     public function getStatusSteps(): array
     {
         return [
-            'pending' => [
-                'label' => 'Pedido Recibido',
-                'description' => 'Hemos recibido tu pedido',
+            'pending_payment' => [
+                'label' => 'Pago pendiente',
+                'description' => 'Esperamos tu comprobante de pago',
                 'icon' => 'clipboard-document-check',
             ],
-            'confirmed' => [
-                'label' => 'Confirmado',
-                'description' => 'Tu pedido ha sido confirmado',
+            'pending_review' => [
+                'label' => 'En revisión',
+                'description' => 'Estamos revisando tu comprobante',
+                'icon' => 'check-circle',
+            ],
+            'payment_verified' => [
+                'label' => 'Pago verificado',
+                'description' => 'Confirmamos tu pago',
                 'icon' => 'check-circle',
             ],
             'preparing' => [
@@ -60,12 +64,12 @@ class TrackOrder extends Component
                 'description' => 'Estamos preparando tu arreglo',
                 'icon' => 'sparkles',
             ],
-            'ready' => [
+            'ready_for_delivery' => [
                 'label' => 'Listo',
                 'description' => 'Tu pedido está listo para entrega',
                 'icon' => 'gift',
             ],
-            'delivering' => [
+            'in_delivery' => [
                 'label' => 'En Camino',
                 'description' => 'Tu pedido va en camino',
                 'icon' => 'truck',
@@ -74,6 +78,16 @@ class TrackOrder extends Component
                 'label' => 'Entregado',
                 'description' => '¡Pedido entregado!',
                 'icon' => 'heart',
+            ],
+            'cancelled' => [
+                'label' => 'Cancelado',
+                'description' => 'El pedido fue cancelado',
+                'icon' => 'x-circle',
+            ],
+            'refunded' => [
+                'label' => 'Reembolsado',
+                'description' => 'El pago fue reembolsado',
+                'icon' => 'arrow-path',
             ],
         ];
     }

@@ -18,7 +18,7 @@ Hola **{{ $customerName }}**,
 - Si no hay nadie en casa, intentaremos contactarte
 - Las flores se entregan personalmente para garantizar su frescura
 
-@component('mail::button', ['url' => route('orders.show', $order->order_number), 'color' => 'primary'])
+@component('mail::button', ['url' => route('track.order.code', $order->tracking_code), 'color' => 'primary'])
 Seguir Mi Pedido
 @endcomponent
 

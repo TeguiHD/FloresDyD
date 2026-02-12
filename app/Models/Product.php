@@ -19,6 +19,8 @@ class Product extends Model
         'price',
         'compare_price',
         'discount_percentage',
+        'promo_starts_at',
+        'promo_ends_at',
         'stock',
         'reserved_stock',
         'low_stock_threshold',
@@ -31,6 +33,7 @@ class Product extends Model
         'free_delivery_city',
         'has_personalized_card',
         'custom_badges',
+        'badge_overrides',
         'main_image',
         'gallery_images',
         'meta_title',
@@ -46,6 +49,8 @@ class Product extends Model
             'price' => 'integer',
             'compare_price' => 'integer',
             'discount_percentage' => 'integer',
+            'promo_starts_at' => 'datetime',
+            'promo_ends_at' => 'datetime',
             'stock' => 'integer',
             'reserved_stock' => 'integer',
             'low_stock_threshold' => 'integer',
@@ -57,6 +62,7 @@ class Product extends Model
             'has_free_delivery' => 'boolean',
             'has_personalized_card' => 'boolean',
             'custom_badges' => 'array',
+            'badge_overrides' => 'array',
             'gallery_images' => 'array',
             'views_count' => 'integer',
             'sales_count' => 'integer',
@@ -92,6 +98,16 @@ class Product extends Model
         return $this->hasMany(StockReservation::class);
     }
 
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order');
+    }
+
+    public function activeVariants()
+    {
+        return $this->variants()->where('is_active', true);
+    }
+
     public function stockLogs()
     {
         return $this->hasMany(ProductStockLog::class);
@@ -112,7 +128,36 @@ class Product extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return '$' . number_format($this->price / 100, 0, ',', '.');
+        return '$' . number_format($this->price, 0, ',', '.');
+    }
+
+    /**
+     * Precio actual (alias para compatibilidad en vistas)
+     */
+    public function getCurrentPriceAttribute(): int
+    {
+        return $this->price;
+    }
+
+    /**
+     * Imagen principal (alias para compatibilidad en vistas)
+     */
+    public function getImageAttribute(): string
+    {
+        return $this->main_image;
+    }
+
+    public function getImageUrlsAttribute(): array
+    {
+        $images = array_merge([$this->main_image], $this->gallery_images ?? []);
+        $images = array_values(array_unique(array_filter($images)));
+
+        return array_map(function (string $image): string {
+            if (str_starts_with($image, 'http')) {
+                return $image;
+            }
+            return asset('storage/' . $image);
+        }, $images);
     }
 
     /**
@@ -123,7 +168,7 @@ class Product extends Model
         if (!$this->compare_price) {
             return null;
         }
-        return '$' . number_format($this->compare_price / 100, 0, ',', '.');
+        return '$' . number_format($this->compare_price, 0, ',', '.');
     }
 
     /**
@@ -202,6 +247,84 @@ class Product extends Model
         return asset('storage/' . $this->main_image);
     }
 
+    /**
+     * ¿Promoción activa?
+     */
+    public function getPromoActiveAttribute(): bool
+    {
+        if (!$this->compare_price || $this->compare_price <= $this->price) {
+            return false;
+        }
+        if ($this->promo_starts_at && $this->promo_starts_at->isFuture()) {
+            return false;
+        }
+        if ($this->promo_ends_at && $this->promo_ends_at->isPast()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Precio mínimo y máximo considerando variantes activas.
+     *
+     * @return array{min:int,max:int}
+     */
+    public function getVariantPriceRangeAttribute(): array
+    {
+        $variants = $this->activeVariants()->get();
+        if ($variants->isEmpty()) {
+            return ['min' => $this->price, 'max' => $this->price];
+        }
+
+        $prices = $variants->flatMap(function (ProductVariant $variant) {
+            $basePrice = $variant->price_override !== null ? (int) $variant->price_override : (int) $this->price;
+
+            if ($variant->type === 'range') {
+                $min = max(1, (int) ($variant->min_value ?? 1));
+                $max = (int) ($variant->max_value ?? $min);
+                $pricePerUnit = (int) ($variant->price_per_unit ?? 0);
+                $minPrice = $basePrice;
+                $maxExtra = max(0, $max - $min) * $pricePerUnit;
+                $maxPrice = $basePrice + $maxExtra;
+                return [$minPrice, $maxPrice];
+            }
+
+            if ($variant->price_override !== null) {
+                return [$basePrice];
+            }
+            return [(int) $basePrice + (int) $variant->price_modifier];
+        });
+
+        return [
+            'min' => $prices->min(),
+            'max' => $prices->max(),
+        ];
+    }
+
+    public function getIsBestsellerAttribute(): bool
+    {
+        return $this->sales_count >= 20;
+    }
+
+    public function getBadgeLabel(string $key, string $fallback, array $replacements = []): string
+    {
+        $label = $fallback;
+        $overrides = is_array($this->badge_overrides) ? $this->badge_overrides : [];
+
+        if (array_key_exists($key, $overrides)) {
+            $override = trim((string) $overrides[$key]);
+            if ($override !== '') {
+                $label = $override;
+            }
+        }
+
+        foreach ($replacements as $token => $value) {
+            $label = str_replace('{' . $token . '}', (string) $value, $label);
+        }
+
+        return $label;
+    }
+
     // =============================================
     // MÉTODOS
     // =============================================
@@ -232,7 +355,7 @@ class Product extends Model
             'user_id' => $userId,
             'session_id' => $sessionId,
             'quantity' => $quantity,
-            'expires_at' => now()->addMinutes(config('flores.stock_reservation_minutes', 45)),
+            'expires_at' => now()->addMinutes(config('flores.stock.reservation_time', 30)),
         ]);
 
         // Incrementar stock reservado
@@ -267,6 +390,43 @@ class Product extends Model
         $this->decrement('stock', $quantity);
         $this->increment('sales_count');
         $this->logStockChange('sale', -$quantity, "Venta confirmada");
+    }
+
+    /**
+     * Confirmar venta desde un pedido sin reserva asociada.
+     */
+    public function confirmSaleForOrder(int $quantity, ?string $reason = null): void
+    {
+        if (!$this->track_stock) {
+            return;
+        }
+
+        $release = min($quantity, $this->reserved_stock);
+        if ($release > 0) {
+            $this->decrement('reserved_stock', $release);
+        }
+
+        $this->decrement('stock', $quantity);
+        $this->increment('sales_count');
+        $this->logStockChange('sale', -$quantity, $reason ?? 'Venta confirmada (pedido)');
+    }
+
+    /**
+     * Liberar stock reservado desde un pedido cancelado.
+     */
+    public function releaseReservedStock(int $quantity, ?string $reason = null): void
+    {
+        if (!$this->track_stock) {
+            return;
+        }
+
+        $release = min($quantity, $this->reserved_stock);
+        if ($release <= 0) {
+            return;
+        }
+
+        $this->decrement('reserved_stock', $release);
+        $this->logStockChange('release', $release, $reason ?? 'Liberación por cancelación');
     }
 
     /**

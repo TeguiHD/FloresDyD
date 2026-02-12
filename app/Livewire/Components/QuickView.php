@@ -4,6 +4,7 @@ namespace App\Livewire\Components;
 
 use Livewire\Component;
 use App\Models\Product;
+use App\Services\CartService;
 
 /**
  * QuickView Component - Vista rápida de producto
@@ -24,6 +25,8 @@ class QuickView extends Component
     public int $quantity = 1;
     public int $selectedImageIndex = 0;
     public string $cardMessage = '';
+    public ?int $selectedVariantId = null;
+    public ?int $customValue = null;
     
     protected $listeners = [
         'openQuickView' => 'open',
@@ -32,13 +35,24 @@ class QuickView extends Component
     
     public function open(int $productId): void
     {
-        $this->product = Product::with(['category', 'reviews'])->find($productId);
+        $this->product = Product::with(['category', 'reviews', 'activeVariants'])->find($productId);
         
         if ($this->product) {
             $this->isOpen = true;
             $this->quantity = 1;
             $this->selectedImageIndex = 0;
             $this->cardMessage = '';
+            $this->selectedVariantId = null;
+            $this->customValue = null;
+
+            $variants = $this->product->activeVariants;
+            if ($variants->isNotEmpty()) {
+                $first = $variants->first();
+                $this->selectedVariantId = $first->id;
+                if ($first->type === 'range') {
+                    $this->customValue = $first->min_value ?? 1;
+                }
+            }
         }
     }
     
@@ -46,6 +60,8 @@ class QuickView extends Component
     {
         $this->isOpen = false;
         $this->product = null;
+        $this->selectedVariantId = null;
+        $this->customValue = null;
     }
     
     public function selectImage(int $index): void
@@ -55,15 +71,15 @@ class QuickView extends Component
     
     public function nextImage(): void
     {
-        if ($this->product && count($this->product->gallery) > 0) {
-            $this->selectedImageIndex = ($this->selectedImageIndex + 1) % count($this->product->gallery);
+        if ($this->product && count($this->product->image_urls) > 0) {
+            $this->selectedImageIndex = ($this->selectedImageIndex + 1) % count($this->product->image_urls);
         }
     }
     
     public function previousImage(): void
     {
-        if ($this->product && count($this->product->gallery) > 0) {
-            $total = count($this->product->gallery);
+        if ($this->product && count($this->product->image_urls) > 0) {
+            $total = count($this->product->image_urls);
             $this->selectedImageIndex = ($this->selectedImageIndex - 1 + $total) % $total;
         }
     }
@@ -87,57 +103,81 @@ class QuickView extends Component
         if (!$this->product) {
             return;
         }
-        
-        if ($this->quantity > $this->product->available_stock) {
+
+        // SECURITY: Re-verify product is active (may have changed since modal opened)
+        $freshProduct = Product::query()
+            ->where('id', $this->product->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$freshProduct) {
             $this->dispatch('showToast', [
-                'message' => 'No hay suficiente stock disponible.',
+                'message' => 'Este producto ya no está disponible.',
                 'type' => 'error'
             ]);
+            $this->close();
             return;
         }
-        
-        // Obtener carrito actual
-        $cart = session('cart', []);
-        $productKey = $this->product->id;
-        
-        // Si el producto ya está en el carrito, actualizar cantidad
-        if (isset($cart[$productKey])) {
-            $newQuantity = $cart[$productKey]['quantity'] + $this->quantity;
-            
-            if ($newQuantity > $this->product->available_stock) {
+
+        // SECURITY: Validate quantity against available stock
+        $quantity = max(1, (int) $this->quantity);
+        if ($freshProduct->track_stock) {
+            if ($freshProduct->available_stock < 1) {
                 $this->dispatch('showToast', [
-                    'message' => 'Cantidad máxima alcanzada para este producto.',
-                    'type' => 'warning'
+                    'message' => 'Este producto está agotado.',
+                    'type' => 'error'
                 ]);
                 return;
             }
-            
-            $cart[$productKey]['quantity'] = $newQuantity;
-        } else {
-            // Añadir nuevo producto
-            $cart[$productKey] = [
-                'id' => $this->product->id,
-                'name' => $this->product->name,
-                'slug' => $this->product->slug,
-                'price' => $this->product->current_price,
-                'original_price' => $this->product->price,
-                'image' => $this->product->image,
-                'quantity' => $this->quantity,
-                'card_message' => $this->cardMessage,
-            ];
+            $quantity = min($quantity, $freshProduct->available_stock);
         }
-        
+
+        $variant = null;
+        if ($this->selectedVariantId) {
+            // SECURITY: Validate variant belongs to this product and is active
+            $variant = $freshProduct->activeVariants()->where('id', $this->selectedVariantId)->first();
+            if (!$variant) {
+                $this->dispatch('showToast', [
+                    'message' => 'El formato seleccionado no es válido.',
+                    'type' => 'error'
+                ]);
+                return;
+            }
+
+            // SECURITY: Normalize custom value server-side
+            if ($variant->type === 'range') {
+                $this->customValue = CartService::normalizeCustomValue($variant, $this->customValue);
+            } else {
+                $this->customValue = null;
+            }
+        }
+
+        $cart = session('cart', []);
+        $cart = CartService::addItem($cart, $freshProduct, $variant, $quantity, $this->cardMessage, $this->customValue);
         session(['cart' => $cart]);
         
-        // Disparar eventos
         $this->dispatch('cartUpdated');
         $this->dispatch('showToast', [
-            'message' => "¡{$this->product->name} añadido al carrito!",
+            'message' => "¡{$freshProduct->name} añadido al carrito!",
             'type' => 'success'
         ]);
         
-        // Cerrar modal
         $this->close();
+    }
+
+    public function updatedSelectedVariantId($value): void
+    {
+        if (!$this->product) {
+            $this->customValue = null;
+            return;
+        }
+
+        $variant = $this->product->activeVariants->firstWhere('id', (int) $value);
+        if ($variant && $variant->type === 'range') {
+            $this->customValue = $variant->min_value ?? 1;
+        } else {
+            $this->customValue = null;
+        }
     }
     
     public function goToProduct(): void

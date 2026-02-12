@@ -20,7 +20,7 @@
  */
 
 // Clave de seguridad para acceso web (si se accede por URL)
-$SECRET_KEY = 'CAMBIAR_ESTA_CLAVE_CRON_2026';
+$SECRET_KEY = getenv('CRON_SECRET_KEY') ?: 'CAMBIAR_ESTA_CLAVE_ANTES_DE_USAR';
 
 // Si se accede por web (no por CLI), verificar clave
 if (php_sapi_name() !== 'cli') {

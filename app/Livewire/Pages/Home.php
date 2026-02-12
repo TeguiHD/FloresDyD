@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Testimonial;
 use App\Models\PromoBanner;
+use App\Models\SiteSetting;
 
 /**
  * Home Page Component
@@ -59,6 +60,9 @@ class Home extends Component
             ->orderByDesc('discount_percentage')
             ->take(4)
             ->get();
+
+        $instagramEmbeds = SiteSetting::getInstagramEmbeds();
+        $instagramUsername = SiteSetting::getInstagramUsername();
         
         return view('livewire.pages.home', [
             'featuredProducts' => $featuredProducts,
@@ -66,6 +70,8 @@ class Home extends Component
             'categories' => $categories,
             'testimonials' => $testimonials,
             'dealsProducts' => $dealsProducts,
+            'instagramEmbeds' => $instagramEmbeds,
+            'instagramUsername' => $instagramUsername,
         ])->layout('layouts.app', [
             'title' => 'Flores D&D | Arreglos Florales Artesanales en Santiago',
             'description' => 'Descubre arreglos florales únicos para cada ocasión especial. Entrega el mismo día en Santiago. ¡Sorprende con flores frescas!',

@@ -1,14 +1,16 @@
 <div>
-    @if($isOpen && $product)
     <div 
         x-data="{ show: @entangle('isOpen') }"
+        x-effect="document.body.style.overflow = show ? 'hidden' : ''"
         x-show="show"
+        x-cloak
         x-on:keydown.escape.window="$wire.close()"
         class="fixed inset-0 z-50 overflow-y-auto"
         aria-labelledby="modal-title"
         role="dialog"
         aria-modal="true"
     >
+    @if($product)
     {{-- Backdrop --}}
     <div 
         x-show="show"
@@ -32,16 +34,16 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90dvh] overflow-hidden"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90dvh] overflow-hidden relative"
             @click.stop
         >
             {{-- Close button --}}
             <button 
                 wire:click="close"
-                class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                class="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-10 sm:h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
                 aria-label="Cerrar"
             >
-                <svg class="w-5 h-5 text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -50,33 +52,63 @@
                 {{-- Galería de imágenes --}}
                 <div class="relative bg-gray-50 aspect-square md:aspect-auto">
                     @php
-                        $images = $product->gallery ?: [$product->image];
+                        $images = $product->image_urls ?: [$product->main_image_url];
                     @endphp
                     
                     {{-- Imagen principal --}}
                     <img 
-                        src="{{ asset('storage/' . ($images[$selectedImageIndex] ?? $product->image)) }}"
+                        src="{{ $images[$selectedImageIndex] ?? $product->main_image_url }}"
                         alt="{{ $product->name }}"
                         class="w-full h-full object-cover"
                     >
                     
                     {{-- Badges --}}
-                    <div class="absolute top-4 left-4 flex flex-col gap-2">
-                        @if($product->discount_percentage > 0)
-                            <span class="product-card__badge--discount px-3 py-1 text-xs font-bold rounded-full bg-red-500 text-white">
-                                -{{ $product->discount_percentage }}%
+                    @php
+                        $discount = $product->calculated_discount ?? $product->discount_percentage;
+                        $customBadges = collect($product->custom_badges ?? [])->filter()->take(2);
+                        $promoLabel = $product->getBadgeLabel(
+                            'promo',
+                            $discount ? '-' . $discount . '%' : 'Oferta',
+                            ['discount' => $discount]
+                        );
+                        $newLabel = $product->getBadgeLabel('new', 'Nuevo');
+                        $featuredLabel = $product->getBadgeLabel('featured', 'Destacado');
+                        $bestsellerLabel = $product->getBadgeLabel('bestseller', 'Más vendido');
+                        $lowStockLabel = $product->getBadgeLabel('low_stock', '¡Quedan pocas!');
+                        $stockLeftLabel = $product->getBadgeLabel('stock_left', 'Solo quedan {count}', ['count' => $product->available_stock]);
+                        $soldOutLabel = $product->getBadgeLabel('sold_out', 'Agotado');
+                    @endphp
+                    <div class="absolute top-2 left-2 sm:top-4 sm:left-4 flex flex-col gap-1 sm:gap-2">
+                        @if($product->promo_active)
+                            <span class="px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full bg-red-500 text-white">
+                                {{ $promoLabel }}
                             </span>
                         @endif
                         @if($product->is_new)
-                            <span class="product-card__badge--new px-3 py-1 text-xs font-bold rounded-full bg-green-500 text-white">
-                                Nuevo
+                            <span class="px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full bg-green-500 text-white">
+                                {{ $newLabel }}
+                            </span>
+                        @endif
+                        @if($product->is_featured)
+                            <span class="hidden sm:inline-flex px-3 py-1 text-xs font-bold rounded-full bg-sky-500 text-white">
+                                {{ $featuredLabel }}
                             </span>
                         @endif
                         @if($product->is_bestseller)
-                            <span class="px-3 py-1 text-xs font-bold rounded-full bg-yellow-500 text-white">
-                                Más vendido
+                            <span class="hidden sm:inline-flex px-3 py-1 text-xs font-bold rounded-full bg-yellow-500 text-white">
+                                {{ $bestsellerLabel }}
                             </span>
                         @endif
+                        @if($product->available_stock > 0 && $product->low_stock)
+                            <span class="px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full bg-orange-500 text-white">
+                                {{ $lowStockLabel }}
+                            </span>
+                        @endif
+                        @foreach($customBadges as $badge)
+                            <span class="hidden sm:inline-flex px-3 py-1 text-xs font-bold rounded-full bg-slate-900 text-white">
+                                {{ $badge }}
+                            </span>
+                        @endforeach
                     </div>
                     
                     {{-- Navegación de imágenes --}}
@@ -107,7 +139,7 @@
                                     wire:click="selectImage({{ $index }})"
                                     class="w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors {{ $selectedImageIndex === $index ? 'border-primary' : 'border-white/50' }}"
                                 >
-                                    <img src="{{ asset('storage/' . $image) }}" alt="" class="w-full h-full object-cover">
+                                    <img src="{{ $image }}" alt="" class="w-full h-full object-cover">
                                 </button>
                             @endforeach
                         </div>
@@ -115,7 +147,7 @@
                 </div>
                 
                 {{-- Información del producto --}}
-                <div class="p-6 lg:p-8 overflow-y-auto max-h-[50dvh] md:max-h-none">
+                <div class="p-4 sm:p-6 lg:p-8 overflow-y-auto max-h-[50dvh] md:max-h-none">
                     {{-- Categoría --}}
                     @if($product->category)
                         <a 
@@ -146,18 +178,151 @@
                     @endif
                     
                     {{-- Precio --}}
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="price text-2xl">${{ number_format($product->current_price, 2) }}</span>
-                        @if($product->discount_percentage > 0)
-                            <span class="price--old">${{ number_format($product->price, 2) }}</span>
-                            <span class="discount-badge">-{{ $product->discount_percentage }}%</span>
+                    @php
+                        $selectedVariant = $product->activeVariants->firstWhere('id', $selectedVariantId);
+                        $displayPrice = \App\Services\CartService::calculateUnitPrice($product, $selectedVariant, $customValue);
+                        $displayCompare = \App\Services\CartService::calculateComparePrice($product, $selectedVariant);
+                        $hasPromo = $product->promo_active && $displayCompare > $displayPrice;
+                    @endphp
+                    <div
+                        class="mb-4"
+                        x-data="{
+                            selectedId: @entangle('selectedVariantId'),
+                            customVal: @entangle('customValue'),
+                            basePrice: {{ (int) $product->price }},
+                            comparePrice: {{ (int) ($product->compare_price ?: $product->price) }},
+                            promoActive: {{ $product->promo_active ? 'true' : 'false' }},
+                            variants: @js($product->activeVariants->map(fn($v) => [
+                                'id' => $v->id,
+                                'label' => $v->label ?: $v->name,
+                                'type' => $v->type,
+                                'price_modifier' => (int) $v->price_modifier,
+                                'price_override' => $v->price_override !== null ? (int) $v->price_override : null,
+                                'min_value' => (int) ($v->min_value ?? 1),
+                                'max_value' => (int) ($v->max_value ?? ($v->min_value ?? 1)),
+                                'step_value' => (int) ($v->step_value ?? 1),
+                                'price_per_unit' => (int) ($v->price_per_unit ?? 0),
+                                'unit_label' => $v->unit_label,
+                            ])->values()),
+                            get selected() {
+                                return this.variants.find(v => v.id === this.selectedId) || null;
+                            },
+                            get displayPrice() {
+                                const v = this.selected;
+                                if (!v) return Math.max(0, this.basePrice);
+                                if (v.type === 'range') {
+                                    const min = Math.max(1, v.min_value);
+                                    const cVal = Math.max(min, Math.min(this.customVal || min, v.max_value));
+                                    const extra = Math.max(0, cVal - min) * v.price_per_unit;
+                                    const base = v.price_override !== null ? v.price_override : this.basePrice;
+                                    return Math.max(0, base + extra);
+                                }
+                                if (v.price_override !== null) return Math.max(0, v.price_override);
+                                return Math.max(0, this.basePrice + v.price_modifier);
+                            },
+                            get displayCompare() {
+                                const v = this.selected;
+                                const base = this.comparePrice;
+                                if (!v) return Math.max(0, base);
+                                if (v.price_override !== null) return Math.max(0, v.price_override);
+                                return Math.max(0, base + v.price_modifier);
+                            },
+                            get hasPromo() {
+                                return this.promoActive && this.displayCompare > this.displayPrice;
+                            },
+                            get discount() {
+                                if (!this.hasPromo || this.displayCompare <= 0) return 0;
+                                return Math.round(((this.displayCompare - this.displayPrice) / this.displayCompare) * 100);
+                            },
+                            formatCLP(n) {
+                                return '$' + new Intl.NumberFormat('es-CL').format(n);
+                            },
+                            selectVariant(id) {
+                                this.selectedId = id;
+                                const v = this.variants.find(v => v.id === id);
+                                if (v && v.type === 'range') {
+                                    this.customVal = v.min_value;
+                                } else {
+                                    this.customVal = null;
+                                }
+                            },
+                            clampCustom() {
+                                const v = this.selected;
+                                if (!v || v.type !== 'range') return;
+                                let val = parseInt(this.customVal) || v.min_value;
+                                val = Math.max(v.min_value, Math.min(val, v.max_value));
+                                const step = Math.max(1, v.step_value);
+                                val = v.min_value + Math.floor((val - v.min_value) / step) * step;
+                                this.customVal = val;
+                            }
+                        }"
+                    >
+                        {{-- Precio dinámico --}}
+                        <div class="flex items-center gap-3">
+                            <span class="price text-2xl" x-text="formatCLP(displayPrice)"></span>
+                            <template x-if="hasPromo">
+                                <span class="price--old" x-text="formatCLP(displayCompare)"></span>
+                            </template>
+                            <template x-if="hasPromo">
+                                <span class="text-xs text-green-600 font-medium" x-text="discount + '% OFF'"></span>
+                            </template>
+                        </div>
+
+                        {{-- Formatos --}}
+                        @if($product->activeVariants->isNotEmpty())
+                            <div class="mt-4">
+                                <label class="form-label text-sm mb-2">Elige tu formato</label>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($product->activeVariants as $variant)
+                                        @php
+                                            $variantPrice = $variant->price_override !== null
+                                                ? $variant->price_override
+                                                : $product->price + $variant->price_modifier;
+                                        @endphp
+                                        <button
+                                            type="button"
+                                            @click="selectVariant({{ $variant->id }})"
+                                            :class="selectedId === {{ $variant->id }}
+                                                ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/30'
+                                                : 'border-gray-200 hover:border-primary/50'"
+                                            class="px-3 py-2 border rounded-lg text-sm transition"
+                                        >
+                                            {{ $variant->label ?: $variant->name }}
+                                            @if($variant->type === 'fixed')
+                                                <span class="text-xs text-gray-500">(${{ number_format($variantPrice, 0, ',', '.') }})</span>
+                                            @elseif($variant->type === 'range' && $variant->unit_label)
+                                                <span class="text-xs text-gray-400">{{ $variant->min_value ?? 1 }}-{{ $variant->max_value ?? 1 }} {{ $variant->unit_label }}</span>
+                                            @endif
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                {{-- Range selector --}}
+                                <template x-if="selected && selected.type === 'range'">
+                                    <div class="mt-3 p-3 bg-gray-50 rounded-lg space-y-2">
+                                        <label class="text-sm font-medium text-dark" x-text="(selected.label || 'Cantidad') + (selected.unit_label ? ' (' + selected.unit_label + ')' : '')"></label>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" @click="customVal = Math.max(selected.min_value, (customVal || selected.min_value) - selected.step_value); clampCustom()" :disabled="customVal <= selected.min_value" class="w-8 h-8 rounded border flex items-center justify-center hover:bg-gray-100 disabled:opacity-30">−</button>
+                                            <input type="number" x-model.number="customVal" @change="clampCustom()" :min="selected.min_value" :max="selected.max_value" :step="selected.step_value" class="w-16 text-center form-input text-sm py-1">
+                                            <button type="button" @click="customVal = Math.min(selected.max_value, (customVal || selected.min_value) + selected.step_value); clampCustom()" :disabled="customVal >= selected.max_value" class="w-8 h-8 rounded border flex items-center justify-center hover:bg-gray-100 disabled:opacity-30">+</button>
+                                            <span class="text-xs text-gray-400" x-text="selected.unit_label || ''"></span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-400">
+                                            <span x-text="selected.min_value"></span> — <span x-text="selected.max_value"></span> <span x-text="selected.unit_label || ''"></span>
+                                            <span x-show="selected.price_per_unit > 0"> · <span x-text="formatCLP(selected.price_per_unit)"></span>/<span x-text="selected.unit_label || 'unidad'"></span> extra</span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
                         @endif
                     </div>
-                    
+
                     {{-- Descripción corta --}}
-                    <p class="text-gray-600 mb-6 leading-relaxed">
-                        {{ Str::limit($product->description, 200) }}
-                    </p>
+                    @if($product->description)
+                        <p class="text-gray-600 mb-6 leading-relaxed text-sm">
+                            {{ Str::limit($product->description, 200) }}
+                        </p>
+                    @endif
                     
                     {{-- Disponibilidad --}}
                     <div class="flex items-center gap-2 mb-6">
@@ -166,12 +331,12 @@
                             <span class="text-sm text-green-600">
                                 Disponible 
                                 @if($product->available_stock <= 5)
-                                    <span class="text-orange-500">(Solo quedan {{ $product->available_stock }})</span>
+                                    <span class="text-orange-500">({{ $stockLeftLabel }})</span>
                                 @endif
                             </span>
                         @else
                             <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                            <span class="text-sm text-red-600">Agotado</span>
+                            <span class="text-sm text-red-600">{{ $soldOutLabel }}</span>
                         @endif
                     </div>
                     
@@ -193,7 +358,7 @@
                                 <button 
                                     wire:click="incrementQuantity"
                                     class="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                                    :disabled="$wire.quantity >= $wire.product.available_stock"
+                                    :disabled="$wire.product && $wire.quantity >= $wire.product.available_stock"
                                 >
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -203,7 +368,7 @@
                         </div>
                         
                         {{-- Mensaje para tarjeta (opcional) --}}
-                        @if($product->accepts_card_message)
+                        @if($product->has_personalized_card)
                             <div class="mb-6">
                                 <label for="cardMessage" class="form-label text-sm mb-2">
                                     Mensaje para la tarjeta (opcional)
@@ -259,29 +424,35 @@
                     
                     {{-- Información adicional --}}
                     <div class="mt-6 pt-6 border-t border-gray-100 space-y-3">
-                        <div class="flex items-center gap-3 text-sm text-gray-600">
-                            <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                            </svg>
-                            <span>Entrega el mismo día*</span>
-                        </div>
-                        <div class="flex items-center gap-3 text-sm text-gray-600">
-                            <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                            </svg>
-                            <span>Satisfacción garantizada</span>
-                        </div>
-                        <div class="flex items-center gap-3 text-sm text-gray-600">
-                            <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                            </svg>
-                            <span>Atención personalizada por WhatsApp</span>
-                        </div>
+                        @if($product->has_free_delivery)
+                            <div class="flex items-center gap-3 text-sm text-gray-600">
+                                <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                </svg>
+                                <span>{{ $product->free_delivery_city ? 'Envío gratis en ' . $product->free_delivery_city : 'Envío gratis disponible' }}</span>
+                            </div>
+                        @endif
+                        @if($product->has_fresh_guarantee)
+                            <div class="flex items-center gap-3 text-sm text-gray-600">
+                                <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                                <span>Frescura garantizada</span>
+                            </div>
+                        @endif
+                        @if($product->has_personalized_card)
+                            <div class="flex items-center gap-3 text-sm text-gray-600">
+                                <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                </svg>
+                                <span>Tarjeta personalizada incluida</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    </div>
     @endif
+    </div>
 </div>

@@ -22,13 +22,23 @@ class SiteSetting extends Model
     public static function getMapEmbedUrl(?string $default = null): ?string
     {
         $raw = self::getValue('contact.map_embed_url', $default);
+        return self::normalizeMapEmbedUrl($raw);
+    }
+
+    public static function normalizeMapEmbedUrl(?string $raw): ?string
+    {
         if (!$raw) {
             return null;
         }
 
         $raw = trim($raw);
         $parsed = parse_url($raw);
-        if (!$parsed || empty($parsed['host'])) {
+        if (!$parsed || empty($parsed['host']) || empty($parsed['scheme'])) {
+            return null;
+        }
+
+        $scheme = strtolower($parsed['scheme']);
+        if (!in_array($scheme, ['http', 'https'], true)) {
             return null;
         }
 
@@ -37,17 +47,78 @@ class SiteSetting extends Model
             'www.google.com',
             'google.com',
             'maps.google.com',
+            'maps.app.goo.gl',
+            'goo.gl',
         ];
 
         if (!in_array($host, $allowedHosts, true)) {
             return null;
         }
 
-        if (!isset($parsed['path']) || !str_starts_with($parsed['path'], '/maps/embed')) {
+        $path = $parsed['path'] ?? '';
+        if (str_starts_with($path, '/maps/embed')) {
+            return $raw;
+        }
+
+        if (in_array($host, ['maps.app.goo.gl', 'goo.gl'], true)) {
             return null;
         }
 
-        return $raw;
+        $queryParams = [];
+        parse_str($parsed['query'] ?? '', $queryParams);
+        $query = $queryParams['q'] ?? $queryParams['query'] ?? null;
+        $ll = $queryParams['ll'] ?? $queryParams['center'] ?? null;
+
+        if (!$query && str_contains($path, '/maps/place/')) {
+            $placePart = substr($path, strpos($path, '/maps/place/') + strlen('/maps/place/'));
+            $placePart = preg_split('/\\/|@/', $placePart)[0] ?? '';
+            $placePart = trim(urldecode($placePart));
+            if ($placePart !== '') {
+                $query = str_replace('+', ' ', $placePart);
+            }
+        }
+
+        if (!$query && str_contains($path, '/maps/search/')) {
+            $searchPart = substr($path, strpos($path, '/maps/search/') + strlen('/maps/search/'));
+            $searchPart = preg_split('/\\/|@/', $searchPart)[0] ?? '';
+            $searchPart = trim(urldecode($searchPart));
+            if ($searchPart !== '') {
+                $query = str_replace('+', ' ', $searchPart);
+            }
+        }
+
+        $coords = null;
+        $zoom = null;
+        if (preg_match('/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,(\d+(?:\.\d+)?)z)?/i', $path, $matches)) {
+            $coords = $matches[1] . ',' . $matches[2];
+            $zoom = isset($matches[3]) ? (int) round((float) $matches[3]) : null;
+        }
+
+        if (!$coords && $ll && preg_match('/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/', $ll)) {
+            $coords = $ll;
+        }
+
+        if (!$coords && preg_match('/!3d(-?\d+(?:\.\d+)?)[^!]*!4d(-?\d+(?:\.\d+)?)/i', $path, $matches)) {
+            $coords = $matches[1] . ',' . $matches[2];
+        }
+
+        if (!$coords && preg_match('/!4d(-?\d+(?:\.\d+)?)[^!]*!3d(-?\d+(?:\.\d+)?)/i', $path, $matches)) {
+            $coords = $matches[2] . ',' . $matches[1];
+        }
+
+        if ($coords) {
+            $embed = 'https://www.google.com/maps?q=' . urlencode($coords) . '&output=embed';
+            if ($zoom) {
+                $embed .= '&z=' . $zoom;
+            }
+            return $embed;
+        }
+
+        if ($query) {
+            return 'https://www.google.com/maps?q=' . urlencode($query) . '&output=embed';
+        }
+
+        return null;
     }
 
     public static function getWhatsappNumber(?string $default = null): string
@@ -63,6 +134,128 @@ class SiteSetting extends Model
         }
 
         return $normalized;
+    }
+
+    // =============================================
+    // INSTAGRAM
+    // =============================================
+
+    public static function getInstagramUsername(?string $default = null): ?string
+    {
+        $raw = self::getValue('instagram.username', $default);
+        return self::normalizeInstagramUsername($raw);
+    }
+
+    public static function getInstagramEmbeds(?string $default = null): array
+    {
+        $raw = self::getValue('instagram.embed_urls', $default);
+        if (!$raw) {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        $items = is_array($decoded) ? $decoded : preg_split('/\r?\n/', $raw);
+        $items = is_array($items) ? $items : [];
+
+        $urls = [];
+        foreach ($items as $item) {
+            $url = self::normalizeInstagramEmbedUrl($item);
+            if ($url) {
+                $urls[] = $url;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    public static function normalizeInstagramUsername(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+        $value = ltrim($value, '@');
+        if ($value === '') {
+            return null;
+        }
+
+        if (!preg_match('/^[A-Za-z0-9._]{2,30}$/', $value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    public static function normalizeInstagramEmbedList(?string $value): array
+    {
+        if (!$value) {
+            return [];
+        }
+
+        $items = preg_split('/[\n,]+/', (string) $value) ?: [];
+        $urls = [];
+        foreach ($items as $item) {
+            $url = self::normalizeInstagramEmbedUrl($item);
+            if ($url) {
+                $urls[] = $url;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    public static function normalizeInstagramEmbedUrl(?string $raw): ?string
+    {
+        if (!$raw) {
+            return null;
+        }
+
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        $parsed = parse_url($raw);
+        if (!$parsed || empty($parsed['host']) || empty($parsed['scheme'])) {
+            return null;
+        }
+
+        $scheme = strtolower($parsed['scheme']);
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            return null;
+        }
+
+        $host = strtolower($parsed['host']);
+        if (!in_array($host, ['www.instagram.com', 'instagram.com'], true)) {
+            return null;
+        }
+
+        $path = trim($parsed['path'] ?? '', '/');
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_ends_with($path, 'embed')) {
+            return 'https://www.instagram.com/' . $path;
+        }
+
+        $parts = explode('/', $path);
+        if (count($parts) < 2) {
+            return null;
+        }
+
+        $type = $parts[0];
+        $code = $parts[1];
+        if (!in_array($type, ['p', 'reel', 'tv'], true)) {
+            return null;
+        }
+
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $code)) {
+            return null;
+        }
+
+        return "https://www.instagram.com/{$type}/{$code}/embed";
     }
 
     public static function getWhatsappDisplay(?string $default = null): string

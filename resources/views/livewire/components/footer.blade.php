@@ -106,24 +106,28 @@
                         <li><a href="{{ route('ocasiones') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Ocasiones</a></li>
                         <li><a href="{{ route('politica-envios') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Envíos</a></li>
                         <li><a href="{{ route('flores.santiago') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Flores en Santiago</a></li>
+                        <li><a href="{{ route('flores.valdivia') }}" class="text-sm text-gray-400 hover:text-white transition-colors">Flores en Valdivia</a></li>
                     </ul>
                 </div>
             </div>
             
-            {{-- Columna 3: Contacto --}}
+            {{-- Columna 3: Contacto y Sucursales --}}
             @if(!empty($contactAddress) || !empty($contactPhone) || !empty($contactEmail))
                 <div>
-                    <h5 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Contacto</h5>
+                    <h5 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Nuestras Sucursales</h5>
                     <ul class="space-y-3">
-                        @if(!empty($contactAddress))
+                        @foreach(config('flores.sucursales', []) as $sucursal)
                             <li class="flex items-start gap-2.5">
                                 <svg class="w-4 h-4 flex-shrink-0 text-gray-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                <span class="text-sm text-gray-400">{{ $contactAddress }}</span>
+                                <div>
+                                    <span class="text-sm text-white font-medium">{{ $sucursal['nombre'] }}</span>
+                                    <span class="block text-xs text-gray-400">{{ $sucursal['direccion'] }}, {{ $sucursal['comuna'] }}</span>
+                                </div>
                             </li>
-                        @endif
+                        @endforeach
                         @if(!empty($contactPhone))
                             <li class="flex items-center gap-2.5">
                                 <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

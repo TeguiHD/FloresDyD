@@ -21,6 +21,42 @@ return [
     'address' => env('FLORES_ADDRESS', 'Valdivia y Santiago, Chile'),
     'map_embed_url' => env('FLORES_MAP_EMBED_URL'),
 
+    // Sucursales
+    'sucursales' => [
+        [
+            'nombre' => 'Sucursal Huechuraba',
+            'direccion' => 'Av. Américo Vespucio Norte 359, Local 5',
+            'comuna' => 'Huechuraba',
+            'ciudad' => 'Santiago',
+        ],
+        [
+            'nombre' => 'Sucursal Padre Hurtado',
+            'direccion' => 'San Juan del Castillo 2539',
+            'comuna' => 'Padre Hurtado',
+            'ciudad' => 'Santiago',
+        ],
+    ],
+
+    // Datos de pago
+    'payment' => [
+        'bank_transfer' => [
+            'titular' => env('PAYMENT_BANK_TITULAR', ''),
+            'rut' => env('PAYMENT_BANK_RUT', ''),
+            'banco' => env('PAYMENT_BANK_BANCO', ''),
+            'tipo_cuenta' => env('PAYMENT_BANK_TIPO', ''),
+            'numero_cuenta' => env('PAYMENT_BANK_NUMERO', ''),
+            'email' => env('PAYMENT_BANK_EMAIL', ''),
+        ],
+        'mercado_pago' => [
+            'titular' => env('PAYMENT_MP_TITULAR', ''),
+            'rut' => env('PAYMENT_MP_RUT', ''),
+            'banco' => env('PAYMENT_MP_BANCO', 'Mercado Pago'),
+            'tipo_cuenta' => env('PAYMENT_MP_TIPO', 'Cuenta Vista'),
+            'numero_cuenta' => env('PAYMENT_MP_NUMERO', ''),
+            'email' => env('PAYMENT_MP_EMAIL', ''),
+        ],
+    ],
+
     // Horarios
     'business_hours' => [
         'monday' => ['09:00', '19:00'],
@@ -39,9 +75,10 @@ return [
         'shipping_cost' => env('FLORES_SHIPPING_COST', 50),
         'delivery_zones' => [
             'valdivia' => 0, // Gratis
-            'santiago' => 50,
+            'santiago' => 0, // Gratis
             'alrededores' => 100,
         ],
+        'ciudades' => ['Santiago', 'Valdivia'],
     ],
 
     // Pedidos

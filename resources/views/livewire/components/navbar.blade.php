@@ -17,8 +17,10 @@
     x-data="{ 
         scrolled: false,
         megaOpen: false,
+        userMenuOpen: false,
         mobileMenuOpen: false,
         mobileAccordion: null,
+        mobileCatalogOpen: null,
         init() {
             window.addEventListener('scroll', () => {
                 this.scrolled = window.scrollY > 20;
@@ -27,9 +29,17 @@
     }" 
     class="navbar"
     :class="{ 'navbar--scrolled': scrolled }"
+    @close-catalog.window="megaOpen = false"
+    @click.outside="megaOpen = false"
 >
     {{-- Banner promocional superior --}}
-    @if($promoBanner = \App\Models\PromoBanner::active()->first())
+    @php
+        $bannerPath = '/' . ltrim(request()->path(), '/');
+        $promoBanner = \App\Models\PromoBanner::active()
+            ->get()
+            ->first(fn ($banner) => $banner->isVisibleOnPath($bannerPath));
+    @endphp
+    @if($promoBanner)
         <div 
             x-data="{ visible: true }"
             x-show="visible"
@@ -38,20 +48,41 @@
             x-transition:leave-end="opacity-0"
             class="bg-primary text-white text-center py-2 text-sm relative"
         >
-            <div class="container-custom flex items-center justify-center gap-2">
+            <div class="container-custom flex flex-wrap items-center justify-center gap-2">
+                @if($promoBanner->icon)
+                    <span class="text-base">{{ $promoBanner->icon }}</span>
+                @endif
                 <span>{{ $promoBanner->text }}</span>
                 @if($promoBanner->has_countdown)
                     <livewire:components.countdown-timer :target-date="$promoBanner->ends_at" />
                 @endif
-                <button 
-                    @click="visible = false"
-                    class="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-70"
-                    aria-label="Cerrar banner"
-                >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                @if($promoBanner->button_text && $promoBanner->button_url)
+                    @php
+                        $isExternal = str_starts_with($promoBanner->button_url, 'http');
+                    @endphp
+                    <a
+                        href="{{ $promoBanner->button_url }}"
+                        class="ml-2 underline hover:no-underline"
+                        @if($isExternal)
+                            data-external="true"
+                            target="_blank"
+                            rel="noopener"
+                        @endif
+                    >
+                        {{ $promoBanner->button_text }}
+                    </a>
+                @endif
+                @if($promoBanner->is_dismissible)
+                    <button 
+                        @click="visible = false"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-70"
+                        aria-label="Cerrar banner"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                @endif
             </div>
         </div>
     @endif
@@ -79,120 +110,20 @@
                 </a>
                 
                 {{-- Catálogo con Mega Menu --}}
-                <div class="relative" x-data="{ open: false }" @close-catalog.window="open = false">
+                <div class="relative">
                     <button 
-                        @mouseenter="open = true"
-                        @click="open = !open"
+                        @mouseenter="megaOpen = true"
+                        @click="megaOpen = !megaOpen"
                         class="nav-link flex items-center gap-1"
                         :class="{ 'nav-link--active': {{ request()->routeIs('coleccion*') ? 'true' : 'false' }} }"
-                        aria-expanded="open"
+                        :aria-expanded="megaOpen"
                         aria-haspopup="true"
                     >
                         Catálogo
-                        <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': megaOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
                     </button>
-                    
-                    {{-- Mega Menu --}}
-                    <div 
-                        x-show="open"
-                        @mouseenter="open = true"
-                        @mouseleave="open = false"
-                        @click.away="open = false"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 -translate-y-1"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 -translate-y-1"
-                        class="mega-menu"
-                        x-cloak
-                    >
-                        <div class="mega-menu__inner">
-                            <div class="grid grid-cols-5 gap-2">
-                                @foreach($parentCategories as $parent)
-                                    @php
-                                        $style = $categoryStyles[$parent->slug] ?? null;
-                                        if (!$style) continue;
-                                    @endphp
-                                    <div class="mega-menu__category">
-                                        <a href="{{ route('coleccion.categoria', $parent->slug) }}" class="block group">
-                                            <div class="mega-menu__icon mega-menu__icon--{{ $style['class'] }}">
-                                                @switch($style['icon'])
-                                                    @case('bouquets')
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 9a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 13a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11l3 6m3-6l-3 6"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 21h7l-1-3H9.5l-1 3z"/>
-                                                        </svg>
-                                                        @break
-                                                    @case('regalos')
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10h16"/>
-                                                            <rect x="5" y="10" width="14" height="10" rx="2" stroke-width="1.5"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v10"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7c0 1.4 1.1 2.5 2.5 2.5H12V6c0-1.1-.9-2-2-2s-2 .9-2 3z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 7c0 1.4-1.1 2.5-2.5 2.5H12V6c0-1.1.9-2 2-2s2 .9 2 3z"/>
-                                                        </svg>
-                                                        @break
-                                                    @case('eventos')
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <rect x="3.5" y="6.5" width="17" height="14" rx="2" stroke-width="1.5"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 3.5v3M17 3.5v3M3.5 10.5h17"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l1.5 1.5L13 13"/>
-                                                        </svg>
-                                                        @break
-                                                    @case('novios')
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <circle cx="9" cy="12" r="3.5" stroke-width="1.5"/>
-                                                            <circle cx="15" cy="12" r="3.5" stroke-width="1.5"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.5 14.5l1 1"/>
-                                                        </svg>
-                                                        @break
-                                                    @case('condolencias')
-                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20s-7-4.5-7-9a4 4 0 017-2 4 4 0 017 2c0 4.5-7 9-7 9z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9.5v5.5"/>
-                                                        </svg>
-                                                        @break
-                                                @endswitch
-                                            </div>
-                                            <div class="mega-menu__title group-hover:text-primary transition-colors">
-                                                {{ $parent->name }}
-                                            </div>
-                                        </a>
-                                        
-                                        @if($parent->children->count() > 0)
-                                            <ul class="mega-menu__links">
-                                                @foreach($parent->children as $child)
-                                                    <li>
-                                                        <a href="{{ route('coleccion.categoria', $child->slug) }}">
-                                                            {{ $child->name }}
-                                                        </a>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                            
-                            <div class="mt-5 pt-4 border-t border-gray-100 text-center">
-                                <a 
-                                    href="{{ route('coleccion') }}"
-                                    class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-dark transition-colors"
-                                >
-                                    Ver toda la colección
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                                    </svg>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 
                 <a href="{{ route('ocasiones') }}" class="nav-link {{ request()->routeIs('ocasiones*') ? 'nav-link--active' : '' }}" @mouseenter="$dispatch('close-catalog')">
@@ -210,7 +141,26 @@
             
             {{-- Acciones (derecha) --}}
             <div class="flex items-center gap-2 lg:gap-3">
-                
+                {{-- Usuario --}}
+                <div class="relative" x-ref="userBtn">
+                    <button
+                        @click="
+                            userMenuOpen = !userMenuOpen;
+                            if (userMenuOpen) { 
+                                mobileMenuOpen = false; 
+                                megaOpen = false; 
+                            }
+                        "
+                        class="p-2 text-dark hover:text-primary transition-colors"
+                        aria-label="Cuenta de usuario"
+                        :aria-expanded="userMenuOpen"
+                    >
+                        <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.5 20a7.5 7.5 0 0113 0M12 12a4 4 0 100-8 4 4 0 000 8z"/>
+                        </svg>
+                    </button>
+                </div>
+
                 {{-- Búsqueda --}}
                 <button 
                     wire:click="openSearch"
@@ -242,7 +192,16 @@
                 
                 {{-- Menú móvil toggle --}}
                 <button 
-                    @click="mobileMenuOpen = !mobileMenuOpen"
+                    @click="
+                        mobileMenuOpen = !mobileMenuOpen;
+                        if (mobileMenuOpen) { 
+                            userMenuOpen = false; 
+                            megaOpen = false; 
+                        } else {
+                            mobileAccordion = null;
+                            mobileCatalogOpen = null;
+                        }
+                    "
                     class="lg:hidden p-2 text-dark hover:text-primary transition-colors"
                     aria-label="Menú"
                     :aria-expanded="mobileMenuOpen"
@@ -254,6 +213,157 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
+            </div>
+        </div>
+
+        {{-- Dropdown de usuario (fuera del flex para evitar overflow) --}}
+        <div class="relative">
+            <div
+                x-show="userMenuOpen"
+                @click.away="userMenuOpen = false"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0 translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-1"
+                class="absolute right-0 top-0 w-56 max-w-[calc(100vw-2rem)] rounded-xl bg-white shadow-card border border-secondary p-2 z-50"
+                x-cloak
+            >
+                @auth
+                    <div class="px-3 py-2 text-sm">
+                        <p class="font-medium text-dark truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-dark/60 truncate">{{ auth()->user()->email }}</p>
+                    </div>
+                    <div class="h-px bg-secondary my-2"></div>
+                    @if(auth()->user()->hasAnyRole(['super-admin', 'admin']))
+                        <a href="{{ route('admin.dashboard') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                            Panel de administración
+                        </a>
+                    @endif
+                    <a href="{{ route('account.dashboard') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                        Mi cuenta
+                    </a>
+                    <a href="{{ route('account.orders') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                        Mis pedidos
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="mt-1">
+                        @csrf
+                        <button type="submit" class="w-full text-left px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                            Cerrar sesión
+                        </button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                        Iniciar sesión
+                    </a>
+                    <a href="{{ route('register') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                        Crear cuenta
+                    </a>
+                    <div class="h-px bg-secondary my-2"></div>
+                    <a href="{{ route('track.order') }}" class="block px-3 py-2 rounded-lg text-sm text-dark hover:bg-gray-50">
+                        Rastrear pedido
+                    </a>
+                @endauth
+            </div>
+        </div>
+        
+        {{-- Mega Menu --}}
+        <div 
+            x-show="megaOpen"
+            @mouseenter="megaOpen = true"
+            @mouseleave="megaOpen = false"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 -translate-y-1"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-1"
+            class="mega-menu hidden lg:block"
+            x-cloak
+        >
+            <div class="mega-menu__inner">
+                <div class="grid grid-cols-5 gap-2">
+                    @foreach($parentCategories as $parent)
+                        @php
+                            $style = $categoryStyles[$parent->slug] ?? null;
+                            if (!$style) continue;
+                        @endphp
+                        <div class="mega-menu__category">
+                            <a href="{{ route('coleccion.categoria', $parent->slug) }}" class="block group">
+                                <div class="mega-menu__icon mega-menu__icon--{{ $style['class'] }}">
+                                    @switch($style['icon'])
+                                        @case('bouquets')
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 9a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 13a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11l3 6m3-6l-3 6"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 21h7l-1-3H9.5l-1 3z"/>
+                                            </svg>
+                                            @break
+                                        @case('regalos')
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10h16"/>
+                                                <rect x="5" y="10" width="14" height="10" rx="2" stroke-width="1.5"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v10"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7c0 1.4 1.1 2.5 2.5 2.5H12V6c0-1.1-.9-2-2-2s-2 .9-2 3z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 7c0 1.4-1.1 2.5-2.5 2.5H12V6c0-1.1.9-2 2-2s2 .9 2 3z"/>
+                                            </svg>
+                                            @break
+                                        @case('eventos')
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <rect x="3.5" y="6.5" width="17" height="14" rx="2" stroke-width="1.5"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 3.5v3M17 3.5v3M3.5 10.5h17"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l1.5 1.5L13 13"/>
+                                            </svg>
+                                            @break
+                                        @case('novios')
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <circle cx="9" cy="12" r="3.5" stroke-width="1.5"/>
+                                                <circle cx="15" cy="12" r="3.5" stroke-width="1.5"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.5 14.5l1 1"/>
+                                            </svg>
+                                            @break
+                                        @case('condolencias')
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20s-7-4.5-7-9a4 4 0 017-2 4 4 0 017 2c0 4.5-7 9-7 9z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9.5v5.5"/>
+                                            </svg>
+                                            @break
+                                    @endswitch
+                                </div>
+                                <div class="mega-menu__title group-hover:text-primary transition-colors">
+                                    {{ $parent->name }}
+                                </div>
+                            </a>
+                            
+                            @if($parent->children->count() > 0)
+                                <ul class="mega-menu__links">
+                                    @foreach($parent->children as $child)
+                                        <li>
+                                            <a href="{{ route('coleccion.categoria', $child->slug) }}">
+                                                {{ $child->name }}
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                
+                <div class="mt-5 pt-4 border-t border-gray-100 text-center">
+                    <a 
+                        href="{{ route('coleccion') }}"
+                        class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-dark transition-colors"
+                    >
+                        Ver toda la colección
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -279,7 +389,12 @@
             {{-- Catálogo - Acordeón de Categorías --}}
             <div class="mobile-category">
                 <button 
-                    @click="mobileAccordion = mobileAccordion === 'catalogo' ? null : 'catalogo'"
+                    @click="
+                        mobileAccordion = mobileAccordion === 'catalogo' ? null : 'catalogo';
+                        if (mobileAccordion !== 'catalogo') { 
+                            mobileCatalogOpen = null; 
+                        }
+                    "
                     class="mobile-category__trigger"
                     :class="{ 'text-primary': mobileAccordion === 'catalogo' }"
                 >
@@ -306,63 +421,132 @@
                             $style = $categoryStyles[$parent->slug] ?? null;
                             if (!$style) continue;
                         @endphp
-                        <div class="mb-3">
-                            <a 
-                                href="{{ route('coleccion.categoria', $parent->slug) }}"
-                                class="flex items-center gap-2 px-4 py-2 font-medium text-dark hover:text-primary transition-colors"
-                            >
-                                <span class="mobile-category__icon mega-menu__icon--{{ $style['class'] }}">
-                                    @switch($style['icon'])
-                                        @case('bouquets')
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 9a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 13a2 2 0 114 0 2 2 0 01-4 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11l3 6m3-6l-3 6"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 21h7l-1-3H9.5l-1 3z"/>
-                                            </svg>
-                                            @break
-                                        @case('regalos')
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10h16"/>
-                                                <rect x="5" y="10" width="14" height="10" rx="2" stroke-width="1.5"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v10"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7c0 1.4 1.1 2.5 2.5 2.5H12V6c0-1.1-.9-2-2-2s-2 .9-2 3z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 7c0 1.4-1.1 2.5-2.5 2.5H12V6c0-1.1.9-2 2-2s2 .9 2 3z"/>
-                                            </svg>
-                                            @break
-                                        @case('eventos')
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <rect x="3.5" y="6.5" width="17" height="14" rx="2" stroke-width="1.5"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 3.5v3M17 3.5v3M3.5 10.5h17"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l1.5 1.5L13 13"/>
-                                            </svg>
-                                            @break
-                                        @case('novios')
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <circle cx="9" cy="12" r="3.5" stroke-width="1.5"/>
-                                                <circle cx="15" cy="12" r="3.5" stroke-width="1.5"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.5 14.5l1 1"/>
-                                            </svg>
-                                            @break
-                                        @case('condolencias')
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20s-7-4.5-7-9a4 4 0 017-2 4 4 0 017 2c0 4.5-7 9-7 9z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9.5v5.5"/>
-                                            </svg>
-                                            @break
-                                    @endswitch
-                                </span>
-                                {{ $parent->name }}
-                            </a>
+                        <div class="mobile-category__group">
                             @if($parent->children->count() > 0)
-                                <div class="mobile-category__children">
+                                <button 
+                                    type="button"
+                                    class="mobile-category__parent"
+                                    :class="{ 'mobile-category__parent--active': mobileCatalogOpen === '{{ $parent->slug }}' }"
+                                    @click="mobileCatalogOpen = mobileCatalogOpen === '{{ $parent->slug }}' ? null : '{{ $parent->slug }}'"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <span class="mobile-category__icon mega-menu__icon--{{ $style['class'] }}">
+                                            @switch($style['icon'])
+                                                @case('bouquets')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 9a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 13a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11l3 6m3-6l-3 6"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 21h7l-1-3H9.5l-1 3z"/>
+                                                    </svg>
+                                                    @break
+                                                @case('regalos')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10h16"/>
+                                                        <rect x="5" y="10" width="14" height="10" rx="2" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v10"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7c0 1.4 1.1 2.5 2.5 2.5H12V6c0-1.1-.9-2-2-2s-2 .9-2 3z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 7c0 1.4-1.1 2.5-2.5 2.5H12V6c0-1.1.9-2 2-2s2 .9 2 3z"/>
+                                                    </svg>
+                                                    @break
+                                                @case('eventos')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <rect x="3.5" y="6.5" width="17" height="14" rx="2" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 3.5v3M17 3.5v3M3.5 10.5h17"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l1.5 1.5L13 13"/>
+                                                    </svg>
+                                                    @break
+                                                @case('novios')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <circle cx="9" cy="12" r="3.5" stroke-width="1.5"/>
+                                                        <circle cx="15" cy="12" r="3.5" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.5 14.5l1 1"/>
+                                                    </svg>
+                                                    @break
+                                                @case('condolencias')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20s-7-4.5-7-9a4 4 0 017-2 4 4 0 017 2c0 4.5-7 9-7 9z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9.5v5.5"/>
+                                                    </svg>
+                                                    @break
+                                            @endswitch
+                                        </span>
+                                        {{ $parent->name }}
+                                    </span>
+                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': mobileCatalogOpen === '{{ $parent->slug }}' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <div 
+                                    x-show="mobileCatalogOpen === '{{ $parent->slug }}'"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    x-cloak
+                                    class="mobile-category__children"
+                                >
+                                    <a href="{{ route('coleccion.categoria', $parent->slug) }}" class="is-parent">
+                                        Ver todo {{ $parent->name }}
+                                    </a>
                                     @foreach($parent->children as $child)
                                         <a href="{{ route('coleccion.categoria', $child->slug) }}">
                                             {{ $child->name }}
                                         </a>
                                     @endforeach
                                 </div>
+                            @else
+                                <a 
+                                    href="{{ route('coleccion.categoria', $parent->slug) }}"
+                                    class="mobile-category__parent"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <span class="mobile-category__icon mega-menu__icon--{{ $style['class'] }}">
+                                            @switch($style['icon'])
+                                                @case('bouquets')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 9a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 13a2 2 0 114 0 2 2 0 01-4 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 11l3 6m3-6l-3 6"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 21h7l-1-3H9.5l-1 3z"/>
+                                                    </svg>
+                                                    @break
+                                                @case('regalos')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10h16"/>
+                                                        <rect x="5" y="10" width="14" height="10" rx="2" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v10"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7c0 1.4 1.1 2.5 2.5 2.5H12V6c0-1.1-.9-2-2-2s-2 .9-2 3z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.5 7c0 1.4-1.1 2.5-2.5 2.5H12V6c0-1.1.9-2 2-2s2 .9 2 3z"/>
+                                                    </svg>
+                                                    @break
+                                                @case('eventos')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <rect x="3.5" y="6.5" width="17" height="14" rx="2" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 3.5v3M17 3.5v3M3.5 10.5h17"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l1.5 1.5L13 13"/>
+                                                    </svg>
+                                                    @break
+                                                @case('novios')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <circle cx="9" cy="12" r="3.5" stroke-width="1.5"/>
+                                                        <circle cx="15" cy="12" r="3.5" stroke-width="1.5"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.5 14.5l1 1"/>
+                                                    </svg>
+                                                    @break
+                                                @case('condolencias')
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 20s-7-4.5-7-9a4 4 0 017-2 4 4 0 017 2c0 4.5-7 9-7 9z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9.5v5.5"/>
+                                                    </svg>
+                                                    @break
+                                            @endswitch
+                                        </span>
+                                        {{ $parent->name }}
+                                    </span>
+                                </a>
                             @endif
                         </div>
                     @endforeach

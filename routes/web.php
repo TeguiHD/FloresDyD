@@ -26,6 +26,7 @@ use App\Livewire\Account\OrderShow as AccountOrderShow;
 use App\Models\Order;
 use App\Models\PaymentProof;
 use App\Models\Category;
+use App\Models\Popup;
 use App\Services\AuditService;
 
 /*
@@ -80,6 +81,10 @@ Route::get('/register', function () {
 Route::get('/olvide-mi-contrasena', ForgotPassword::class)->middleware('guest')->name('password.request');
 Route::get('/reset-password/{token}', ResetPassword::class)->middleware('guest')->name('password.reset');
 
+// Google OAuth
+Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirect'])->middleware('guest')->name('auth.google');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])->middleware('guest')->name('auth.google.callback');
+
 Route::post('/logout', function () {
     AuditService::logout();
     Auth::logout();
@@ -131,6 +136,8 @@ Route::view('/aviso-de-privacidad', 'pages.politica-privacidad')->name('aviso-pr
 Route::view('/terminos-y-condiciones', 'pages.terminos-condiciones')->name('terminos');
 Route::view('/politica-de-envios', 'pages.politica-envios')->name('politica-envios');
 Route::view('/flores-a-domicilio-santiago', 'pages.flores-domicilio-santiago')->name('flores.santiago');
+Route::view('/flores-a-domicilio-valdivia', 'pages.flores-domicilio-valdivia')->name('flores.valdivia');
+Route::view('/sucursales', 'pages.sucursales')->name('sucursales');
 
 // =========================================
 // API ENDPOINTS PÚBLICOS (Para AJAX)
@@ -142,12 +149,23 @@ Route::prefix('api')->group(function () {
         // Lógica para verificar si se entrega en el código postal
         return response()->json(['available' => true]);
     })->name('api.verificar-entrega');
-    
+
     // Calcular costo de envío
     Route::post('/calcular-envio', function () {
         // Lógica para calcular envío
         return response()->json(['shipping' => 0, 'free' => true]);
     })->name('api.calcular-envio');
+
+    // Popups marketing: métricas
+    Route::post('/popups/{popup}/view', function (Popup $popup) {
+        $popup->increment('views_count');
+        return response()->json(['ok' => true]);
+    })->middleware('throttle:30,1')->name('api.popups.view');
+
+    Route::post('/popups/{popup}/click', function (Popup $popup) {
+        $popup->increment('clicks_count');
+        return response()->json(['ok' => true]);
+    })->middleware('throttle:30,1')->name('api.popups.click');
 });
 
 // =========================================
@@ -180,6 +198,8 @@ Route::get('/sitemap.xml', function () {
         route('aviso-privacidad'),
         route('terminos'),
         route('flores.santiago'),
+        route('flores.valdivia'),
+        route('sucursales'),
     ];
 
     $categories = Category::query()
@@ -191,7 +211,7 @@ Route::get('/sitemap.xml', function () {
         $urls[] = route('coleccion.categoria', $category->slug);
     }
 
-    $escape = fn ($value) => htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    $escape = fn($value) => htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     $items = '';
     foreach (array_unique($urls) as $url) {
         $items .= "<url><loc>{$escape($url)}</loc><lastmod>{$now}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>";
@@ -230,7 +250,7 @@ Route::get('/robots.txt', function () {
 });
 
 // Admin routes
-require __DIR__.'/admin.php';
+require __DIR__ . '/admin.php';
 
 // =========================================
 // HONEYPOT TRAP ROUTES - Detección de bots

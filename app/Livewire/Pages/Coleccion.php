@@ -56,7 +56,8 @@ class Coleccion extends Component
     {
         $query = Product::query()
             ->where('is_active', true)
-            ->where('stock', '>', 0);
+            ->inStock()
+            ->with('activeVariants');
 
         $selectedCategory = $this->category
             ? Category::with('children')->find($this->category)
@@ -94,7 +95,7 @@ class Coleccion extends Component
             'price_asc' => $query->orderBy('price', 'asc'),
             'price_desc' => $query->orderBy('price', 'desc'),
             'name' => $query->orderBy('name', 'asc'),
-            'popular' => $query->orderBy('views', 'desc'),
+            'popular' => $query->orderBy('views_count', 'desc'),
             default => $query->orderBy('created_at', 'desc'),
         };
 

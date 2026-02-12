@@ -47,7 +47,7 @@ return new class extends Migration
             $table->text('short_description')->nullable();
             
             // Precios
-            $table->unsignedInteger('price'); // En centavos (CLP)
+            $table->unsignedInteger('price'); // Precio en CLP (ej: 34990 = $34.990)
             $table->unsignedInteger('compare_price')->nullable(); // Precio anterior
             $table->unsignedTinyInteger('discount_percentage')->nullable();
             

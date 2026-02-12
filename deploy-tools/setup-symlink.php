@@ -13,8 +13,8 @@
  * ============================================================
  */
 
-// Clave de seguridad - CAMBIAR antes de subir
-$SECRET_KEY = 'CAMBIAR_ESTA_CLAVE_SECRETA_2026';
+// Clave de seguridad - se lee de variable de entorno o .env
+$SECRET_KEY = getenv('DEPLOY_SECRET_KEY') ?: 'CAMBIAR_ESTA_CLAVE_ANTES_DE_USAR';
 
 if (!isset($_GET['key']) || $_GET['key'] !== $SECRET_KEY) {
     http_response_code(403);

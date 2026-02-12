@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -19,17 +20,19 @@ class NewOrderAdminMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public Order $order
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {
-        $fraudLevel = match(true) {
+        $fraudLevel = match (true) {
             $this->order->fraud_score >= 70 => '🟢',
             $this->order->fraud_score >= 40 => '🟡',
             default => '🔴',
         };
 
         return new Envelope(
+            from: new Address(config('mail.aliases.pedidos', 'pedidos@floresdyd.cl'), config('app.name')),
             subject: "{$fraudLevel} Nuevo pedido #{$this->order->order_number} - \${$this->formatTotal()}",
         );
     }
@@ -44,13 +47,13 @@ class NewOrderAdminMail extends Mailable implements ShouldQueue
                 'items' => $this->order->items,
                 'fraudScore' => $this->order->fraud_score,
                 'fraudFactors' => $this->order->fraud_factors,
-                'adminUrl' => route('admin.orders.show', $this->order),
+                'adminUrl' => route('admin.orders'),
             ],
         );
     }
 
     private function formatTotal(): string
     {
-        return number_format($this->order->total / 100, 0, ',', '.');
+        return number_format($this->order->total, 0, ',', '.');
     }
 }

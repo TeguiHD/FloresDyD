@@ -18,6 +18,8 @@ class SiteSettings extends Component
     public string $email = '';
     public string $address = '';
     public ?string $map_embed_url = null;
+    public string $instagram_username = '';
+    public string $instagram_embeds = '';
 
     public bool $saved = false;
 
@@ -28,7 +30,9 @@ class SiteSettings extends Component
         $this->whatsapp = SiteSetting::getValue('contact.whatsapp', config('flores.whatsapp')) ?? '';
         $this->email = SiteSetting::getValue('contact.email', config('flores.email')) ?? '';
         $this->address = SiteSetting::getValue('contact.address', config('flores.address')) ?? '';
-        $this->map_embed_url = SiteSetting::getMapEmbedUrl(config('flores.map_embed_url'));
+        $this->map_embed_url = SiteSetting::getValue('contact.map_embed_url', config('flores.map_embed_url'));
+        $this->instagram_username = SiteSetting::getInstagramUsername() ?? '';
+        $this->instagram_embeds = implode("\n", SiteSetting::getInstagramEmbeds());
     }
 
     public function save(): void
@@ -39,7 +43,9 @@ class SiteSettings extends Component
             'whatsapp' => ['required', 'string', 'max:20', 'regex:/^[0-9+()\s-]{7,20}$/'],
             'email' => ['required', 'email', 'max:120'],
             'address' => ['required', 'string', 'max:255'],
-            'map_embed_url' => ['nullable', 'string', 'max:500'],
+            'map_embed_url' => ['nullable', 'string', 'max:2000'],
+            'instagram_username' => ['nullable', 'string', 'max:60'],
+            'instagram_embeds' => ['nullable', 'string', 'max:6000'],
         ], [
             'phone.regex' => 'El teléfono contiene caracteres no válidos.',
             'whatsapp.regex' => 'El WhatsApp contiene caracteres no válidos.',
@@ -60,9 +66,9 @@ class SiteSettings extends Component
 
         $mapUrl = null;
         if (!empty($validated['map_embed_url'])) {
-            $mapUrl = SiteSetting::getMapEmbedUrl($validated['map_embed_url']);
+            $mapUrl = SiteSetting::normalizeMapEmbedUrl($validated['map_embed_url']);
             if (!$mapUrl) {
-                $this->addError('map_embed_url', 'El enlace debe ser un embed válido de Google Maps.');
+                $this->addError('map_embed_url', 'El enlace debe ser de Google Maps (embed o enlace completo, sin acortadores).');
                 return;
             }
         }
@@ -74,6 +80,29 @@ class SiteSettings extends Component
         $changes['contact.email'] = $this->upsertSetting('contact.email', $validated['email']);
         $changes['contact.address'] = $this->upsertSetting('contact.address', $validated['address']);
         $changes['contact.map_embed_url'] = $this->upsertSetting('contact.map_embed_url', $mapUrl);
+
+        $instagramUsername = SiteSetting::normalizeInstagramUsername($validated['instagram_username'] ?? '');
+        $instagramEmbeds = SiteSetting::normalizeInstagramEmbedList($validated['instagram_embeds'] ?? '');
+
+        if (!empty($validated['instagram_username']) && !$instagramUsername) {
+            $this->addError('instagram_username', 'El usuario de Instagram no es válido.');
+            return;
+        }
+
+        if (!empty($validated['instagram_embeds']) && empty($instagramEmbeds)) {
+            $this->addError('instagram_embeds', 'No se detectaron URLs válidas de Instagram.');
+            return;
+        }
+
+        $changes['instagram.username'] = $this->upsertSetting('instagram.username', $instagramUsername ?: null);
+        $changes['instagram.embed_urls'] = $this->upsertSetting(
+            'instagram.embed_urls',
+            $instagramEmbeds ? json_encode($instagramEmbeds) : null
+        );
+
+        $this->map_embed_url = $mapUrl;
+        $this->instagram_username = $instagramUsername ?? '';
+        $this->instagram_embeds = implode("\n", $instagramEmbeds);
 
         AuditService::log(
             action: 'admin:site_settings_update',
@@ -102,6 +131,11 @@ class SiteSettings extends Component
     public function render()
     {
         return view('livewire.admin.site-settings');
+    }
+
+    public function getMapPreviewUrlProperty(): ?string
+    {
+        return SiteSetting::normalizeMapEmbedUrl($this->map_embed_url);
     }
 
     public function getWhatsappPreviewProperty(): string

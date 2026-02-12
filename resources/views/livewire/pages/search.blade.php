@@ -45,6 +45,12 @@
             @elseif($products instanceof \Illuminate\Pagination\LengthAwarePaginator && $products->count() > 0)
                 <p class="text-dark/60 mb-6">{{ $products->total() }} resultados para "{{ $q }}"</p>
                 
+                @if($products->hasPages())
+                    <div class="mb-6">
+                        {{ $products->links() }}
+                    </div>
+                @endif
+
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
                     @foreach($products as $product)
                         <livewire:components.product-card :product="$product" :key="$product->id" />

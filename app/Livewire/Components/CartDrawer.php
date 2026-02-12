@@ -3,6 +3,7 @@
 namespace App\Livewire\Components;
 
 use Livewire\Component;
+use App\Services\CartService;
 
 /**
  * CartDrawer Component - Carrito lateral
@@ -29,7 +30,9 @@ class CartDrawer extends Component
     
     public function refreshCart(): void
     {
-        $this->items = session('cart', []);
+        $clean = CartService::sanitizeCart(session('cart', []));
+        session(['cart' => $clean]);
+        $this->items = $clean;
     }
     
     public function toggle(): void
@@ -51,58 +54,62 @@ class CartDrawer extends Component
         $this->isOpen = false;
     }
     
-    public function updateQuantity(int $productId, int $quantity): void
+    public function updateQuantity(string $itemKey, int $quantity): void
     {
         if ($quantity < 1) {
-            $this->removeItem($productId);
+            $this->removeItem($itemKey);
             return;
         }
         
         $cart = session('cart', []);
         
-        if (isset($cart[$productId])) {
-            $cart[$productId]['quantity'] = $quantity;
+        if (isset($cart[$itemKey])) {
+            $cart[$itemKey]['quantity'] = $quantity;
+            $cart = CartService::sanitizeCart($cart);
             session(['cart' => $cart]);
             $this->refreshCart();
             $this->dispatch('cartUpdated');
         }
     }
     
-    public function incrementItem(int $productId): void
+    public function incrementItem(string $itemKey): void
     {
         $cart = session('cart', []);
         
-        if (isset($cart[$productId])) {
-            $cart[$productId]['quantity']++;
+        if (isset($cart[$itemKey])) {
+            $cart[$itemKey]['quantity']++;
+            $cart = CartService::sanitizeCart($cart);
             session(['cart' => $cart]);
             $this->refreshCart();
             $this->dispatch('cartUpdated');
         }
     }
     
-    public function decrementItem(int $productId): void
+    public function decrementItem(string $itemKey): void
     {
         $cart = session('cart', []);
         
-        if (isset($cart[$productId])) {
-            if ($cart[$productId]['quantity'] > 1) {
-                $cart[$productId]['quantity']--;
+        if (isset($cart[$itemKey])) {
+            if ($cart[$itemKey]['quantity'] > 1) {
+                $cart[$itemKey]['quantity']--;
+                $cart = CartService::sanitizeCart($cart);
                 session(['cart' => $cart]);
                 $this->refreshCart();
                 $this->dispatch('cartUpdated');
             } else {
-                $this->removeItem($productId);
+                $this->removeItem($itemKey);
             }
         }
     }
     
-    public function removeItem(int $productId): void
+    public function removeItem(string $itemKey): void
     {
         $cart = session('cart', []);
         
-        if (isset($cart[$productId])) {
-            $itemName = $cart[$productId]['name'];
-            unset($cart[$productId]);
+        if (isset($cart[$itemKey])) {
+            $itemName = $cart[$itemKey]['name'];
+            unset($cart[$itemKey]);
+            $cart = CartService::sanitizeCart($cart);
             session(['cart' => $cart]);
             $this->refreshCart();
             $this->dispatch('cartUpdated');

@@ -4,6 +4,7 @@ namespace App\Livewire\Components;
 
 use Livewire\Component;
 use App\Models\Product;
+use App\Services\CartService;
 
 /**
  * ProductCard Component - Tarjeta de producto
@@ -35,45 +36,42 @@ class ProductCard extends Component
     
     public function addToCart(): void
     {
-        if ($this->product->available_stock < 1) {
+        // SECURITY: Re-fetch product to ensure it's still active and in stock
+        $freshProduct = Product::query()
+            ->where('id', $this->product->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$freshProduct) {
+            $this->dispatch('showToast', [
+                'message' => 'Este producto ya no está disponible',
+                'type' => 'error'
+            ]);
+            return;
+        }
+
+        if ($freshProduct->track_stock && $freshProduct->available_stock < 1) {
             $this->dispatch('showToast', [
                 'message' => 'Este producto está agotado',
                 'type' => 'error'
             ]);
             return;
         }
-        
-        $cart = session('cart', []);
-        $productKey = $this->product->id;
-        
-        if (isset($cart[$productKey])) {
-            if ($cart[$productKey]['quantity'] < $this->product->available_stock) {
-                $cart[$productKey]['quantity']++;
-            } else {
-                $this->dispatch('showToast', [
-                    'message' => 'Cantidad máxima alcanzada',
-                    'type' => 'warning'
-                ]);
-                return;
-            }
-        } else {
-            $cart[$productKey] = [
-                'id' => $this->product->id,
-                'name' => $this->product->name,
-                'slug' => $this->product->slug,
-                'price' => $this->product->current_price,
-                'original_price' => $this->product->price,
-                'image' => $this->product->image,
-                'quantity' => 1,
-                'card_message' => '',
-            ];
+
+        $hasVariants = $freshProduct->activeVariants()->exists();
+
+        if ($hasVariants) {
+            $this->dispatch('openQuickView', $freshProduct->id);
+            return;
         }
         
+        $cart = session('cart', []);
+        $cart = CartService::addItem($cart, $freshProduct, null, 1, null, null);
         session(['cart' => $cart]);
         
         $this->dispatch('cartUpdated');
         $this->dispatch('showToast', [
-            'message' => "¡{$this->product->name} añadido!",
+            'message' => "¡{$freshProduct->name} añadido!",
             'type' => 'success'
         ]);
     }

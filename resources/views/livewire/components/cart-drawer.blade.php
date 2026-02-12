@@ -75,8 +75,13 @@
             @else
                 {{-- Lista de productos --}}
                 <ul class="divide-y divide-gray-100">
-                    @foreach($items as $productId => $item)
-                        <li class="p-4" wire:key="cart-item-{{ $productId }}">
+                    @foreach($items as $itemKey => $item)
+                        @php
+                            $imageUrl = str_starts_with($item['image'], 'http')
+                                ? $item['image']
+                                : asset('storage/' . $item['image']);
+                        @endphp
+                        <li class="p-4" wire:key="cart-item-{{ $itemKey }}">
                             <div class="flex gap-4">
                                 {{-- Imagen --}}
                                 <a 
@@ -85,7 +90,7 @@
                                     class="flex-shrink-0"
                                 >
                                     <img 
-                                        src="{{ asset('storage/' . $item['image']) }}"
+                                        src="{{ $imageUrl }}"
                                         alt="{{ $item['name'] }}"
                                         class="w-20 h-20 object-cover rounded-lg"
                                     >
@@ -100,15 +105,23 @@
                                     >
                                         {{ $item['name'] }}
                                     </a>
+                                    @if(!empty($item['variant_label']))
+                                        <p class="text-xs text-ink/60 mt-1">
+                                            {{ $item['variant_label'] }}
+                                            @if(!empty($item['custom_value']))
+                                                · {{ $item['custom_value'] }}{{ $item['variant_type'] === 'range' && !empty($item['unit_label']) ? ' ' . $item['unit_label'] : '' }}
+                                            @endif
+                                        </p>
+                                    @endif
                                     
                                     {{-- Precio --}}
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-primary font-semibold">
-                                            ${{ number_format($item['price'], 2) }}
+                                            ${{ number_format($item['price'], 0, ',', '.') }}
                                         </span>
                                         @if($item['original_price'] > $item['price'])
                                             <span class="text-gray-400 text-sm line-through">
-                                                ${{ number_format($item['original_price'], 2) }}
+                                                ${{ number_format($item['original_price'], 0, ',', '.') }}
                                             </span>
                                         @endif
                                     </div>
@@ -124,7 +137,7 @@
                                     <div class="flex items-center justify-between mt-3">
                                         <div class="flex items-center gap-2">
                                             <button 
-                                                wire:click="decrementItem({{ $productId }})"
+                                                wire:click="decrementItem('{{ $itemKey }}')"
                                                 class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                                                 aria-label="Disminuir cantidad"
                                             >
@@ -134,7 +147,7 @@
                                             </button>
                                             <span class="w-8 text-center font-medium">{{ $item['quantity'] }}</span>
                                             <button 
-                                                wire:click="incrementItem({{ $productId }})"
+                                                wire:click="incrementItem('{{ $itemKey }}')"
                                                 class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                                                 aria-label="Aumentar cantidad"
                                             >
@@ -146,14 +159,14 @@
                                         
                                         {{-- Subtotal del item --}}
                                         <span class="font-semibold text-dark">
-                                            ${{ number_format($item['price'] * $item['quantity'], 2) }}
+                                            ${{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
                                         </span>
                                     </div>
                                 </div>
                                 
                                 {{-- Eliminar --}}
                                 <button 
-                                    wire:click="removeItem({{ $productId }})"
+                                    wire:click="removeItem('{{ $itemKey }}')"
                                     wire:confirm="¿Eliminar este producto del carrito?"
                                     class="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
                                     aria-label="Eliminar producto"
@@ -187,14 +200,14 @@
                 @if($this->savings > 0)
                     <div class="flex items-center justify-between text-sm mb-2">
                         <span class="text-green-600">Estás ahorrando</span>
-                        <span class="text-green-600 font-medium">-${{ number_format($this->savings, 2) }}</span>
+                        <span class="text-green-600 font-medium">-${{ number_format($this->savings, 0, ',', '.') }}</span>
                     </div>
                 @endif
                 
                 {{-- Subtotal --}}
                 <div class="flex items-center justify-between mb-4">
                     <span class="text-gray-600">Subtotal</span>
-                    <span class="font-display text-2xl text-dark">${{ number_format($this->subtotal, 2) }}</span>
+                    <span class="font-display text-2xl text-dark">${{ number_format($this->subtotal, 0, ',', '.') }}</span>
                 </div>
                 
                 <p class="text-xs text-gray-500 mb-4">

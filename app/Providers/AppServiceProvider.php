@@ -17,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
         //
     }
 
+
     /**
      * Bootstrap any application services.
      */
@@ -26,17 +27,17 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
-        
+
         // Super Admin tiene todos los permisos
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super-admin') ? true : null;
         });
-        
+
         // Directivas Blade personalizadas
         Blade::directive('price', function ($expression) {
             return "<?php echo '$' . number_format($expression, 2); ?>";
         });
-        
+
         // Componentes anónimos con prefijo
         Blade::anonymousComponentPath(
             resource_path('views/components'),

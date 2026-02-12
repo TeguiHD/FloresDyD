@@ -14,7 +14,7 @@ Hola **{{ $customerName }}**,
 | Producto | Cantidad | Precio |
 |:---------|:--------:|-------:|
 @foreach($items as $item)
-| {{ $item->product_name }} | {{ $item->quantity }} | ${{ number_format($item->total_price / 100, 0, ',', '.') }} |
+| {{ $item->product_name }}@if($item->variant_label) ({{ $item->variant_label }})@endif | {{ $item->quantity }} | ${{ number_format($item->total_price, 0, ',', '.') }} |
 @endforeach
 | | **Total:** | **${{ $total }}** |
 @endcomponent
@@ -25,8 +25,8 @@ Hola **{{ $customerName }}**,
 2. Verificaremos tu pago en las próximas horas
 3. Te notificaremos cuando tu pedido esté en preparación
 
-@component('mail::button', ['url' => route('orders.show', $order->order_number), 'color' => 'primary'])
-Ver Mi Pedido
+@component('mail::button', ['url' => route('track.order.code', $order->tracking_code), 'color' => 'primary'])
+Rastrear Mi Pedido
 @endcomponent
 
 @if($order->delivery_date)

@@ -191,6 +191,11 @@ El sistema envía emails automáticos para:
 - **XSS**: Sanitización automática de Blade
 - **Rate Limiting**: 60 req/min por IP
 
+## 📚 Documentacion
+
+- `docs/ESPECIFICACION_SEGURIDAD_ARQUITECTURA.md`
+- `docs/DEPLOY_CPANEL.md`
+
 ## 📄 Licencia
 
 Desarrollado para Flores D&D. Todos los derechos reservados.

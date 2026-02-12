@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -21,7 +22,8 @@ class OrderStatusChangedMail extends Mailable implements ShouldQueue
         public Order $order,
         public string $previousStatus,
         public string $newStatus
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {
@@ -39,6 +41,7 @@ class OrderStatusChangedMail extends Mailable implements ShouldQueue
         $subject = $statusMessages[$this->newStatus] ?? 'Actualización de tu pedido';
 
         return new Envelope(
+            from: new Address(config('mail.aliases.pedidos', 'pedidos@floresdyd.cl'), config('app.name')),
             subject: "Pedido #{$this->order->order_number}: {$subject}",
         );
     }
@@ -53,7 +56,7 @@ class OrderStatusChangedMail extends Mailable implements ShouldQueue
                 'previousStatus' => $this->getStatusLabel($this->previousStatus),
                 'newStatus' => $this->getStatusLabel($this->newStatus),
                 'newStatusKey' => $this->newStatus,
-                'trackingUrl' => route('orders.track', $this->order->order_number),
+                'trackingUrl' => route('track.order.code', $this->order->tracking_code),
             ],
         );
     }

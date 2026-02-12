@@ -18,6 +18,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'google_id',
+        'avatar_url',
         'phone_encrypted',
         'address_encrypted',
         'trust_score',
@@ -142,6 +144,11 @@ class User extends Authenticatable
         return $this->hasMany(EmailLog::class);
     }
 
+    public function nameHistories()
+    {
+        return $this->hasMany(UserNameHistory::class)->latest();
+    }
+
     // =============================================
     // TRUST SCORE Y ANTI-FRAUDE
     // =============================================
@@ -153,12 +160,12 @@ class User extends Authenticatable
     {
         $this->increment('successful_orders');
         $this->trust_score = min(100, $this->trust_score + $amount);
-        
+
         // Auto-whitelist después de 2 compras exitosas
         if ($this->successful_orders >= 2 && !$this->is_whitelisted) {
             $this->is_whitelisted = true;
         }
-        
+
         $this->save();
     }
 
@@ -194,7 +201,7 @@ class User extends Authenticatable
     public function recordFailedLogin(): void
     {
         $this->increment('failed_login_attempts');
-        
+
         if ($this->failed_login_attempts >= config('flores.rate_limit_login_attempts', 5)) {
             $this->lockAccount();
         }

@@ -19,27 +19,28 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'product_variant_id',
         'product_name',
-        'product_sku',
+        'variant_label',
+        'variant_type',
+        'custom_value',
         'quantity',
         'unit_price',
-        'subtotal',
-        'discount_amount',
-        'card_message',
+        'total_price',
     ];
 
     protected $casts = [
+        'product_variant_id' => 'integer',
         'quantity' => 'integer',
-        'unit_price' => 'decimal:2',
-        'subtotal' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
+        'custom_value' => 'integer',
+        'unit_price' => 'integer',
+        'total_price' => 'integer',
     ];
 
     /**
      * Campos que se cifran en la base de datos
      */
     protected array $encryptedAttributes = [
-        'card_message', // Mensaje personal, datos sensibles
     ];
 
     // =========================================
@@ -56,22 +57,27 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
     // =========================================
     // ACCESSORS
     // =========================================
 
     public function getTotalAttribute(): float
     {
-        return $this->subtotal - $this->discount_amount;
+        return $this->total_price;
     }
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return '$' . number_format($this->unit_price, 2);
+        return '$' . number_format($this->unit_price, 0, ',', '.');
     }
 
-    public function getFormattedSubtotalAttribute(): string
+    public function getFormattedTotalPriceAttribute(): string
     {
-        return '$' . number_format($this->subtotal, 2);
+        return '$' . number_format($this->total_price, 0, ',', '.');
     }
 }

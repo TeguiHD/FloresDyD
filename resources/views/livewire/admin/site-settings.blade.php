@@ -50,8 +50,22 @@
             <div class="md:col-span-2">
                 <label class="form-label">Mapa (Google Maps Embed)</label>
                 <input type="url" wire:model.defer="map_embed_url" class="form-input" placeholder="https://www.google.com/maps/embed?...">
-                <p class="text-xs text-ink/50 mt-2">Solo se aceptan enlaces de Google Maps con /maps/embed.</p>
+                <p class="text-xs text-ink/50 mt-2">Acepta enlaces de Google Maps (embed o enlace completo). No uses enlaces acortados como maps.app.goo.gl.</p>
                 @error('map_embed_url') <p class="text-red-500 text-xs mt-2">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="form-label">Instagram (usuario)</label>
+                <input type="text" wire:model.defer="instagram_username" class="form-input" placeholder="floresdyd">
+                <p class="text-xs text-ink/50 mt-2">Sin @. Se usa para enlazar el perfil.</p>
+                @error('instagram_username') <p class="text-red-500 text-xs mt-2">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="form-label">Instagram Embeds (publicaciones)</label>
+                <textarea wire:model.defer="instagram_embeds" class="form-input min-h-[120px]" placeholder="https://www.instagram.com/p/XXXX/"></textarea>
+                <p class="text-xs text-ink/50 mt-2">Una URL por línea. Se aceptan publicaciones o reels.</p>
+                @error('instagram_embeds') <p class="text-red-500 text-xs mt-2">{{ $message }}</p> @enderror
             </div>
 
             <div class="md:col-span-2 flex items-center gap-4">
@@ -82,10 +96,28 @@
                 <p class="text-xs uppercase tracking-[0.3em] text-ink/50">Dirección</p>
                 <p>{{ $address ?: 'Dirección no definida' }}</p>
             </div>
-            @if($map_embed_url)
+            @if($this->mapPreviewUrl)
                 <div class="rounded-2xl overflow-hidden border border-[var(--admin-border)]">
-                    <iframe src="{{ $map_embed_url }}" class="w-full h-40" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <iframe src="{{ $this->mapPreviewUrl }}" class="w-full h-40" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
+            @endif
+
+            @if($instagram_username)
+                <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-ink/50">Instagram</p>
+                    <p class="font-semibold">{{ '@' . $instagram_username }}</p>
+                </div>
+            @endif
+
+            @if($instagram_embeds)
+                @php
+                    $previewEmbeds = \App\Models\SiteSetting::normalizeInstagramEmbedList($instagram_embeds);
+                @endphp
+                @if(count($previewEmbeds))
+                    <div class="rounded-2xl overflow-hidden border border-[var(--admin-border)]">
+                        <iframe src="{{ $previewEmbeds[0] }}" class="w-full h-48" loading="lazy"></iframe>
+                    </div>
+                @endif
             @endif
         </div>
     </aside>

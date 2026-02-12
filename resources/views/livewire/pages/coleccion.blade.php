@@ -112,16 +112,16 @@
                 {{-- Contenido Principal --}}
                 <div class="flex-1">
                     {{-- Barra de herramientas --}}
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <p class="text-dark/60 text-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-6">
+                        <p class="text-dark/60 text-xs sm:text-sm">
                             {{ $products->total() }} productos encontrados
                         </p>
 
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             {{-- Ordenar --}}
                             <select 
                                 wire:model.live="sort"
-                                class="px-4 py-2 border border-secondary rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                class="px-2 sm:px-4 py-2 border border-secondary rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-0 max-w-[140px] sm:max-w-none"
                             >
                                 <option value="newest">Más recientes</option>
                                 <option value="price_asc">Precio: Menor a Mayor</option>
@@ -134,9 +134,9 @@
                             <button 
                                 x-data
                                 @click="$dispatch('open-filters')"
-                                class="lg:hidden flex items-center gap-2 px-4 py-2 border border-secondary rounded-lg text-sm"
+                                class="lg:hidden flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 border border-secondary rounded-lg text-xs sm:text-sm flex-shrink-0"
                             >
-                                <x-flux::icon name="adjustments-horizontal" class="w-5 h-5" />
+                                <x-flux::icon name="adjustments-horizontal" class="w-4 h-4 sm:w-5 sm:h-5" />
                                 Filtros
                             </button>
                         </div>
@@ -144,13 +144,20 @@
 
                     {{-- Grid de Productos --}}
                     @if($products->count() > 0)
+                        {{-- Paginación superior --}}
+                        @if($products->hasPages())
+                            <div class="mb-6">
+                                {{ $products->links() }}
+                            </div>
+                        @endif
+
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                             @foreach($products as $product)
                                 <livewire:components.product-card :product="$product" :key="$product->id" />
                             @endforeach
                         </div>
 
-                        {{-- Paginación --}}
+                        {{-- Paginación inferior --}}
                         <div class="mt-8">
                             {{ $products->links() }}
                         </div>

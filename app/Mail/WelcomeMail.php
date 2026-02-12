@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -19,11 +20,13 @@ class WelcomeMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public User $user
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(config('mail.aliases.hola', 'hola@floresdyd.cl'), config('app.name')),
             subject: '¡Bienvenido a Flores D&D! 🌸',
         );
     }
@@ -34,8 +37,8 @@ class WelcomeMail extends Mailable implements ShouldQueue
             markdown: 'emails.welcome',
             with: [
                 'userName' => $this->user->name,
-                'verificationUrl' => $this->user->email_verified_at 
-                    ? null 
+                'verificationUrl' => $this->user->email_verified_at
+                    ? null
                     : url("/email/verify/{$this->user->id}/" . sha1($this->user->email)),
             ],
         );

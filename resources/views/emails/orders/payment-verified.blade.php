@@ -21,8 +21,8 @@ Ahora nuestro equipo comenzará a preparar tu arreglo floral. Te notificaremos c
 **Horario:** {{ $deliveryTimeSlot ?? 'Durante el día' }}
 @endif
 
-@component('mail::button', ['url' => route('orders.show', $order->order_number), 'color' => 'success'])
-Ver Estado del Pedido
+@component('mail::button', ['url' => route('track.order.code', $order->tracking_code), 'color' => 'success'])
+Rastrear Mi Pedido
 @endcomponent
 
 ¡Gracias por confiar en nosotros!

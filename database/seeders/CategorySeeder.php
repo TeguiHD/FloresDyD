@@ -49,6 +49,9 @@ class CategorySeeder extends Seeder
                     ['name' => 'Nacimientos', 'slug' => 'nacimientos', 'description' => 'Arreglos especiales para dar la bienvenida a un nuevo ser', 'icon' => '👶'],
                     ['name' => 'Aniversario', 'slug' => 'aniversario', 'description' => 'Flores románticas para celebrar su amor', 'icon' => '💕'],
                     ['name' => 'Cumpleaños', 'slug' => 'cumpleanos', 'description' => 'Arreglos vibrantes para hacer de su día algo especial', 'icon' => '🎂'],
+                    ['name' => 'Boxes y Combos', 'slug' => 'boxes-combos', 'description' => 'Regalos combinados con flores, peluches y detalles', 'icon' => '🎁'],
+                    ['name' => 'Peluches', 'slug' => 'peluches', 'description' => 'Peluches y complementos para sumar emoción al regalo', 'icon' => '🧸'],
+                    ['name' => 'Arreglos en Base', 'slug' => 'arreglos-en-base', 'description' => 'Arreglos florales en base o florero listos para exhibir', 'icon' => '🏺'],
                 ],
             ],
             [

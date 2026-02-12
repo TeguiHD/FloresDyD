@@ -47,9 +47,9 @@
 | Producto | Cant. | Precio |
 |:---------|:-----:|-------:|
 @foreach($items as $item)
-| {{ $item->product_name }} | {{ $item->quantity }} | ${{ number_format($item->total_price / 100, 0, ',', '.') }} |
+| {{ $item->product_name }}@if($item->variant_label) ({{ $item->variant_label }})@endif | {{ $item->quantity }} | ${{ number_format($item->total_price, 0, ',', '.') }} |
 @endforeach
-| | **Total:** | **${{ number_format($order->total / 100, 0, ',', '.') }}** |
+| | **Total:** | **${{ number_format($order->total, 0, ',', '.') }}** |
 @endcomponent
 
 ---

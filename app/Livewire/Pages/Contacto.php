@@ -21,6 +21,8 @@ class Contacto extends Component
     public string $contactEmail = '';
     public string $contactAddress = '';
     public ?string $mapEmbedUrl = null;
+    public array $instagramEmbeds = [];
+    public ?string $instagramUsername = null;
 
     #[Validate('required|min:3|max:100')]
     public string $name = '';
@@ -48,6 +50,8 @@ class Contacto extends Component
         $this->contactEmail = SiteSetting::getValue('contact.email', config('flores.email'));
         $this->contactAddress = SiteSetting::getValue('contact.address', config('flores.address'));
         $this->mapEmbedUrl = SiteSetting::getMapEmbedUrl(config('flores.map_embed_url'));
+        $this->instagramEmbeds = SiteSetting::getInstagramEmbeds();
+        $this->instagramUsername = SiteSetting::getInstagramUsername();
     }
 
     public function submit(): void

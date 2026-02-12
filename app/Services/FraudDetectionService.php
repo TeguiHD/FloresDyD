@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -124,6 +125,22 @@ class FraudDetectionService
             'reasons' => $reasons,
             'action' => $action,
         ];
+    }
+
+    /**
+     * Calcula el score a partir de una orden.
+     */
+    public function calculateScore(Order $order): int
+    {
+        $request = request();
+        $result = self::evaluate([
+            'total' => $order->total,
+            'email' => $order->customer_email,
+            'phone' => $order->customer_phone,
+            'address' => $order->delivery_address,
+        ], $request);
+
+        return (int) $result['score'];
     }
 
     /**

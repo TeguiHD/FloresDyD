@@ -14,10 +14,16 @@ use App\Livewire\Admin\Security;
 use App\Livewire\Admin\AccessControl;
 use App\Livewire\Admin\Users;
 use App\Livewire\Admin\AuditLogs;
+use App\Livewire\Admin\Coupons;
+use App\Livewire\Admin\Popups;
+use App\Livewire\Admin\PromoBanners;
 use App\Services\AuditService;
+use App\Models\Order;
+use App\Models\PaymentProof;
+use Illuminate\Support\Facades\Storage;
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/login', Login::class)->middleware('guest')->name('login');
+    Route::get('/login', Login::class)->name('login');
 
     Route::post('/logout', function () {
         AuditService::logout();
@@ -38,6 +44,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/products', Products::class)
         ->middleware(['auth', 'role:super-admin|admin'])
         ->name('products');
+
+    Route::get('/marketing/coupons', Coupons::class)
+        ->middleware(['auth', 'role:super-admin|admin'])
+        ->name('coupons');
+
+    Route::get('/marketing/banners', PromoBanners::class)
+        ->middleware(['auth', 'role:super-admin|admin'])
+        ->name('banners');
+
+    Route::get('/marketing/popups', Popups::class)
+        ->middleware(['auth', 'role:super-admin|admin'])
+        ->name('popups');
 
     Route::get('/customers', Customers::class)
         ->middleware(['auth', 'role:super-admin|admin'])
@@ -70,4 +88,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', SiteSettings::class)
         ->middleware(['auth', 'role:super-admin|admin'])
         ->name('settings');
+
+    Route::get('/orders/{order}/proofs/{proof}', function (Order $order, PaymentProof $proof) {
+        abort_unless($proof->order_id === $order->id, 404);
+
+        $disk = Storage::disk('local');
+        if (!$disk->exists($proof->file_path)) {
+            abort(404);
+        }
+
+        return $disk->download($proof->file_path, $proof->original_filename);
+    })->middleware(['auth', 'role:super-admin|admin'])->name('orders.proof.download');
 });

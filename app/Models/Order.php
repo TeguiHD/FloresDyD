@@ -14,6 +14,7 @@ class Order extends Model
 
     protected $fillable = [
         'order_number',
+        'tracking_code',
         'user_id',
         'status',
         'customer_name_encrypted',
@@ -21,9 +22,11 @@ class Order extends Model
         'customer_phone_encrypted',
         'delivery_address_encrypted',
         'delivery_city_encrypted',
+        'delivery_zip_encrypted',
         'delivery_notes_encrypted',
         'delivery_date',
         'delivery_time_slot',
+        'delivery_method',
         'card_message_encrypted',
         'card_recipient',
         'card_sender',
@@ -49,6 +52,7 @@ class Order extends Model
         'customer_phone_encrypted',
         'delivery_address_encrypted',
         'delivery_city_encrypted',
+        'delivery_zip_encrypted',
         'delivery_notes_encrypted',
         'card_message_encrypted',
     ];
@@ -126,6 +130,16 @@ class Order extends Model
         $this->attributes['delivery_city_encrypted'] = $value ? $this->encryptAttribute($value) : null;
     }
 
+    public function getDeliveryZipAttribute(): ?string
+    {
+        return $this->decryptAttribute($this->attributes['delivery_zip_encrypted'] ?? null);
+    }
+
+    public function setDeliveryZipAttribute(?string $value): void
+    {
+        $this->attributes['delivery_zip_encrypted'] = $value ? $this->encryptAttribute($value) : null;
+    }
+
     public function getDeliveryNotesAttribute(): ?string
     {
         return $this->decryptAttribute($this->attributes['delivery_notes_encrypted'] ?? null);
@@ -146,6 +160,14 @@ class Order extends Model
         $this->attributes['card_message_encrypted'] = $value ? $this->encryptAttribute($value) : null;
     }
 
+    /**
+     * Alias para compatibilidad en vistas
+     */
+    public function getDeliveryTimeAttribute(): ?string
+    {
+        return $this->delivery_time_slot;
+    }
+
     // =============================================
     // RELACIONES
     // =============================================
@@ -163,6 +185,11 @@ class Order extends Model
     public function paymentProofs()
     {
         return $this->hasMany(PaymentProof::class);
+    }
+
+    public function latestPaymentProof()
+    {
+        return $this->hasOne(PaymentProof::class)->latestOfMany();
     }
 
     public function coupon()
@@ -195,6 +222,14 @@ class Order extends Model
     }
 
     /**
+     * Generar tracking code público para seguimiento.
+     */
+    public static function generateTrackingCode(): string
+    {
+        return 'TRK-' . strtoupper(bin2hex(random_bytes(4)));
+    }
+
+    /**
      * Calcular fraud score
      */
     public function calculateFraudScore(): int
@@ -208,9 +243,9 @@ class Order extends Model
     public function getRiskLevel(): string
     {
         return match (true) {
-            $this->fraud_score >= 70 => 'low',
-            $this->fraud_score >= 40 => 'medium',
-            default => 'high',
+            $this->fraud_score >= 75 => 'high',
+            $this->fraud_score >= 50 => 'medium',
+            default => 'low',
         };
     }
 
@@ -262,7 +297,7 @@ class Order extends Model
      */
     public function getFormattedTotalAttribute(): string
     {
-        return '$' . number_format($this->total / 100, 0, ',', '.');
+        return '$' . number_format($this->total, 0, ',', '.');
     }
 
     /**
@@ -301,16 +336,16 @@ class Order extends Model
 
     public function scopeHighRisk($query)
     {
-        return $query->where('fraud_score', '<', 40);
+        return $query->where('fraud_score', '>=', 75);
     }
 
     public function scopeMediumRisk($query)
     {
-        return $query->whereBetween('fraud_score', [40, 69]);
+        return $query->whereBetween('fraud_score', [50, 74]);
     }
 
     public function scopeLowRisk($query)
     {
-        return $query->where('fraud_score', '>=', 70);
+        return $query->where('fraud_score', '<', 50);
     }
 }

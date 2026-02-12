@@ -79,12 +79,12 @@ class Dashboard extends Component
             ],
             [
                 'label' => 'Ingresos 30 días',
-                'value' => '$' . number_format($revenue30d / 100, 0, ',', '.'),
+                'value' => '$' . number_format($revenue30d, 0, ',', '.'),
                 'hint' => 'Pagos verificados',
             ],
             [
                 'label' => 'Ticket promedio',
-                'value' => '$' . number_format($avgOrderValue / 100, 0, ',', '.'),
+                'value' => '$' . number_format($avgOrderValue, 0, ',', '.'),
                 'hint' => 'Base 30 días',
             ],
             [

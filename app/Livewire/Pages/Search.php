@@ -38,7 +38,8 @@ class Search extends Component
 
             $products = Product::query()
                 ->where('is_active', true)
-                ->where('stock', '>', 0)
+                ->inStock()
+                ->with('activeVariants')
                 ->where(function ($query) use ($queryText, $terms) {
                     $query->where('name', 'like', "%{$queryText}%")
                           ->orWhere('description', 'like', "%{$queryText}%")
@@ -77,8 +78,9 @@ class Search extends Component
                 if ($suggestedCategories->isNotEmpty()) {
                     $suggestedProducts = Product::query()
                         ->where('is_active', true)
-                        ->where('stock', '>', 0)
+                        ->inStock()
                         ->whereIn('category_id', $suggestedCategories->pluck('id'))
+                        ->with('activeVariants')
                         ->orderBy('views_count', 'desc')
                         ->limit(8)
                         ->get();

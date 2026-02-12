@@ -82,4 +82,18 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'noreply@floresdyd.com'),
         'name' => env('MAIL_FROM_NAME', 'Flores D&D'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Aliases per Type
+    |--------------------------------------------------------------------------
+    | Direcciones de remitente según el tipo de email.
+    */
+    'aliases' => [
+        'noreply' => env('MAIL_FROM_NOREPLY', 'no-reply@floresdyd.cl'),
+        'contacto' => env('MAIL_FROM_CONTACTO', 'contacto@floresdyd.cl'),
+        'hola' => env('MAIL_FROM_HOLA', 'hola@floresdyd.cl'),
+        'pedidos' => env('MAIL_FROM_PEDIDOS', 'pedidos@floresdyd.cl'),
+        'admin' => env('MAIL_FROM_ADMIN', 'administracion@floresdyd.cl'),
+    ],
 ];

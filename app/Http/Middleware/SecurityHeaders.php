@@ -104,8 +104,8 @@ class SecurityHeaders
                 "img-src 'self' data: https: blob: http://127.0.0.1:5173",
                 "media-src 'self' data: blob: http://127.0.0.1:5173",
                 "font-src 'self' data: http://127.0.0.1:5173",
-                "connect-src 'self' ws://127.0.0.1:5173 http://127.0.0.1:5173",
-                "frame-src 'self'",
+                "connect-src 'self' ws://127.0.0.1:5173 http://127.0.0.1:5173 https://maps.googleapis.com https://maps.gstatic.com",
+                "frame-src 'self' https://www.google.com https://maps.google.com https://www.instagram.com",
                 "frame-ancestors 'self'",
                 "form-action 'self'",
                 "base-uri 'self'",
@@ -121,8 +121,8 @@ class SecurityHeaders
             "img-src 'self' data: https: blob:",
             "media-src 'self' data: blob:",
             "font-src 'self' data:",
-            "connect-src 'self' https://www.google-analytics.com https://api.whatsapp.com",
-            "frame-src 'self' https://www.google.com https://www.facebook.com",
+            "connect-src 'self' https://www.google-analytics.com https://api.whatsapp.com https://maps.googleapis.com https://maps.gstatic.com",
+            "frame-src 'self' https://www.google.com https://maps.google.com https://www.facebook.com https://www.instagram.com",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",
@@ -136,7 +136,7 @@ class SecurityHeaders
      */
     private function isSensitiveRoute(Request $request): bool
     {
-        $sensitivePrefixes = ['admin', 'checkout', 'login', 'register', 'password'];
+        $sensitivePrefixes = ['admin', 'checkout', 'login', 'register', 'registro', 'password', 'reset-password', 'olvide-mi-contrasena', 'mi-cuenta'];
         
         foreach ($sensitivePrefixes as $prefix) {
             if ($request->is("{$prefix}*")) {

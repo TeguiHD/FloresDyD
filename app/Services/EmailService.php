@@ -14,6 +14,8 @@ use App\Mail\OrderDeliveredMail;
 use App\Mail\PasswordResetMail;
 use App\Mail\PasswordChangedMail;
 use App\Mail\NewOrderAdminMail;
+use App\Mail\LoginNotificationMail;
+use App\Mail\ProofRejectedMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -163,7 +165,7 @@ class EmailService
     public function sendNewOrderToAdmin(Order $order): void
     {
         $adminEmail = config('flores.admin_email', env('FLORES_ADMIN_EMAIL'));
-        
+
         if (!$adminEmail) {
             Log::warning('FLORES_ADMIN_EMAIL not configured, skipping admin notification');
             return;
@@ -175,6 +177,40 @@ class EmailService
             emailType: 'admin_new_order',
             subject: "Nuevo pedido #{$order->order_number}",
             mailable: new NewOrderAdminMail($order),
+            relatedModel: $order
+        );
+    }
+
+    /**
+     * Enviar notificación de inicio de sesión
+     */
+    public function sendLoginNotification(User $user): void
+    {
+        $this->sendAndLog(
+            user: $user,
+            emailTo: $user->email,
+            emailType: 'login_notification',
+            subject: '🔐 Nuevo inicio de sesión - Flores D&D',
+            mailable: new LoginNotificationMail(
+                $user,
+                request()->ip() ?? 'Desconocida',
+                substr((string) request()->userAgent(), 0, 150),
+                now()->format('d/m/Y H:i')
+            )
+        );
+    }
+
+    /**
+     * Enviar notificación de comprobante rechazado
+     */
+    public function sendProofRejected(Order $order, string $reason): void
+    {
+        $this->sendAndLog(
+            user: $order->user,
+            emailTo: $order->customer_email,
+            emailType: 'proof_rejected',
+            subject: "⚠️ Comprobante rechazado - Pedido #{$order->order_number}",
+            mailable: new ProofRejectedMail($order, $reason),
             relatedModel: $order
         );
     }

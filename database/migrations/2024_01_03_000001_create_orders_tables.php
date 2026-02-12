@@ -47,7 +47,7 @@ return new class extends Migration
             $table->string('card_sender')->nullable();
             
             // Totales
-            $table->unsignedInteger('subtotal'); // En centavos
+            $table->unsignedInteger('subtotal'); // Precio en CLP directo
             $table->unsignedInteger('discount_amount')->default(0);
             $table->unsignedInteger('delivery_fee')->default(0);
             $table->unsignedInteger('total');

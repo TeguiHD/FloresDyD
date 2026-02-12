@@ -105,6 +105,23 @@
                                 </button>
                             </div>
 
+                            @if($deliveryMethod === 'pickup')
+                                <div class="space-y-3 mb-6">
+                                    <p class="text-sm font-medium text-dark">Selecciona la sucursal para recoger:</p>
+                                    @foreach(config('flores.sucursales', []) as $index => $sucursal)
+                                        <label class="block p-4 border-2 rounded-xl cursor-pointer transition {{ ($pickupBranch ?? '') === $sucursal['nombre'] ? 'border-primary bg-primary/5' : 'border-secondary hover:border-primary/30' }}">
+                                            <div class="flex items-start gap-3">
+                                                <input type="radio" wire:model="pickupBranch" value="{{ $sucursal['nombre'] }}" class="mt-1 text-primary focus:ring-primary">
+                                                <div>
+                                                    <p class="font-medium text-dark">{{ $sucursal['nombre'] }}</p>
+                                                    <p class="text-sm text-dark/60">{{ $sucursal['direccion'] }}, {{ $sucursal['comuna'] }}</p>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endif
+
                             @if($deliveryMethod === 'delivery')
                                 <div class="space-y-4">
                                     <div>
@@ -114,12 +131,19 @@
                                     </div>
                                     <div class="grid md:grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-sm font-medium text-dark mb-2">Colonia</label>
+                                            <label class="block text-sm font-medium text-dark mb-2">Comuna</label>
                                             <input type="text" wire:model="deliveryColonia" class="w-full px-4 py-3 border border-secondary rounded-lg">
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium text-dark mb-2">Código Postal *</label>
-                                            <input type="text" wire:model="deliveryZip" maxlength="5" class="w-full px-4 py-3 border border-secondary rounded-lg">
+                                            <label class="block text-sm font-medium text-dark mb-2">Código Postal (opcional)</label>
+                                            <input
+                                                type="text"
+                                                wire:model="deliveryZip"
+                                                maxlength="7"
+                                                inputmode="numeric"
+                                                placeholder="Ej: 9540000"
+                                                class="w-full px-4 py-3 border border-secondary rounded-lg"
+                                            >
                                             @error('deliveryZip') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
                                         </div>
                                     </div>
@@ -130,22 +154,11 @@
                                 </div>
                             @endif
 
-                            <div class="grid md:grid-cols-2 gap-4 mt-6">
+                            <div class="mt-6">
                                 <div>
                                     <label class="block text-sm font-medium text-dark mb-2">Fecha de entrega *</label>
-                                    <input type="date" wire:model="deliveryDate" min="{{ now()->addDay()->format('Y-m-d') }}" class="w-full px-4 py-3 border border-secondary rounded-lg">
+                                    <input type="date" wire:model="deliveryDate" min="{{ now()->format('Y-m-d') }}" class="w-full px-4 py-3 border border-secondary rounded-lg">
                                     @error('deliveryDate') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-dark mb-2">Horario *</label>
-                                    <select wire:model="deliveryTime" class="w-full px-4 py-3 border border-secondary rounded-lg">
-                                        <option value="">Seleccionar</option>
-                                        <option value="09:00-12:00">9:00 - 12:00</option>
-                                        <option value="12:00-15:00">12:00 - 15:00</option>
-                                        <option value="15:00-18:00">15:00 - 18:00</option>
-                                        <option value="18:00-20:00">18:00 - 20:00</option>
-                                    </select>
-                                    @error('deliveryTime') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
                                 </div>
                             </div>
 
@@ -177,14 +190,45 @@
                                     </div>
                                 </button>
 
-                                <button 
-                                    wire:click="$set('paymentMethod', 'card')"
-                                    class="w-full p-4 border-2 rounded-xl transition text-left flex items-center gap-4 {{ $paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-secondary' }}"
+                                @if($paymentMethod === 'transfer')
+                                    <div class="bg-secondary/30 rounded-xl p-5 text-sm space-y-4">
+                                        <h4 class="font-medium text-dark mb-3">Datos para transferencia</h4>
+                                        
+                                        {{-- Opción 1: Banco de Chile --}}
+                                        <div class="bg-white rounded-lg p-4 border border-secondary">
+                                            <p class="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Transferencia Bancaria</p>
+                                            <p><strong>Titular:</strong> {{ config('flores.payment.bank_transfer.titular') }}</p>
+                                            <p><strong>RUT:</strong> {{ config('flores.payment.bank_transfer.rut') }}</p>
+                                            <p><strong>Banco:</strong> {{ config('flores.payment.bank_transfer.banco') }}</p>
+                                            <p><strong>Tipo de cuenta:</strong> {{ config('flores.payment.bank_transfer.tipo_cuenta') }}</p>
+                                            <p><strong>N° de cuenta:</strong> {{ config('flores.payment.bank_transfer.numero_cuenta') }}</p>
+                                            <p><strong>Email:</strong> {{ config('flores.payment.bank_transfer.email') }}</p>
+                                        </div>
+
+                                        {{-- Opción 2: Mercado Pago --}}
+                                        <div class="bg-white rounded-lg p-4 border border-secondary">
+                                            <p class="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Mercado Pago</p>
+                                            <p><strong>Titular:</strong> {{ config('flores.payment.mercado_pago.titular') }}</p>
+                                            <p><strong>RUT:</strong> {{ config('flores.payment.mercado_pago.rut') }}</p>
+                                            <p><strong>Banco:</strong> {{ config('flores.payment.mercado_pago.banco') }}</p>
+                                            <p><strong>Tipo de cuenta:</strong> {{ config('flores.payment.mercado_pago.tipo_cuenta') }}</p>
+                                            <p><strong>N° de cuenta:</strong> {{ config('flores.payment.mercado_pago.numero_cuenta') }}</p>
+                                            <p><strong>Email:</strong> {{ config('flores.payment.mercado_pago.email') }}</p>
+                                        </div>
+
+                                        <p class="text-dark/60 text-xs mt-3">Una vez confirmado tu pedido, usa tu número de pedido como referencia de la transferencia.</p>
+                                    </div>
+                                @endif
+
+                                <button
+                                    type="button"
+                                    disabled
+                                    class="w-full p-4 border-2 rounded-xl text-left flex items-center gap-4 border-secondary opacity-60 cursor-not-allowed"
                                 >
-                                    <x-flux::icon name="credit-card" class="w-8 h-8 {{ $paymentMethod === 'card' ? 'text-primary' : 'text-dark/50' }}" />
+                                    <x-flux::icon name="credit-card" class="w-8 h-8 text-dark/50" />
                                     <div>
                                         <p class="font-medium">Tarjeta de crédito/débito</p>
-                                        <p class="text-sm text-dark/60">Pago seguro con Stripe</p>
+                                        <p class="text-sm text-dark/60">No disponible aún (pasarela de pagos en integración)</p>
                                     </div>
                                 </button>
                             </div>
@@ -220,11 +264,11 @@
                                 </div>
                                 <div class="flex justify-between py-2 border-b border-secondary">
                                     <span class="text-dark/60">Fecha:</span>
-                                    <span>{{ $deliveryDate }} ({{ $deliveryTime }})</span>
+                                    <span>{{ $deliveryDate }}</span>
                                 </div>
                                 <div class="flex justify-between py-2 border-b border-secondary">
                                     <span class="text-dark/60">Pago:</span>
-                                    <span>{{ $paymentMethod === 'transfer' ? 'Transferencia' : 'Tarjeta' }}</span>
+                                    <span>Transferencia bancaria</span>
                                 </div>
                             </div>
 
@@ -247,15 +291,90 @@
                         
                         <div class="space-y-3 mb-6">
                             @foreach($cart as $item)
+                                @php
+                                    $imageUrl = str_starts_with($item['image'], 'http')
+                                        ? $item['image']
+                                        : asset('storage/' . $item['image']);
+                                @endphp
                                 <div class="flex gap-3">
-                                    <div class="w-16 h-16 bg-secondary/30 rounded-lg flex-shrink-0"></div>
+                                    <img src="{{ $imageUrl }}" alt="{{ $item['name'] ?? 'Producto' }}" class="w-16 h-16 rounded-lg object-cover flex-shrink-0">
                                     <div class="flex-1">
                                         <p class="font-medium text-sm">{{ $item['name'] ?? 'Producto' }}</p>
+                                        @if(!empty($item['variant_label']))
+                                            <p class="text-xs text-ink/60">
+                                                {{ $item['variant_label'] }}
+                                                @if(!empty($item['custom_value']))
+                                                    · {{ $item['custom_value'] }}{{ $item['unit_label'] ? ' ' . $item['unit_label'] : '' }}
+                                                @endif
+                                            </p>
+                                        @endif
                                         <p class="text-dark/60 text-xs">Cant: {{ $item['quantity'] }}</p>
                                     </div>
-                                    <p class="font-medium">${{ number_format($item['price'] * $item['quantity'], 0) }}</p>
+                                    <p class="font-medium">${{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}</p>
                                 </div>
                             @endforeach
+                        </div>
+
+                        {{-- Cupón --}}
+                        <div class="border-t border-secondary pt-4 mb-4">
+                            <p class="text-sm font-medium text-dark mb-2">¿Tienes un cupón?</p>
+                            @if($appliedCoupon)
+                                {{-- Cupón aplicado --}}
+                                <div class="flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg">
+                                    <svg class="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-green-800 truncate">{{ $appliedCoupon['code'] }}</p>
+                                        @if($couponMessage)
+                                            <p class="text-xs text-green-600">{{ $couponMessage }}</p>
+                                        @endif
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        wire:click="clearCoupon" 
+                                        class="text-xs text-red-500 hover:text-red-700 font-medium hover:underline shrink-0"
+                                    >
+                                        Quitar
+                                    </button>
+                                </div>
+                            @else
+                                {{-- Input de cupón --}}
+                                <div class="flex gap-2">
+                                    <input 
+                                        type="text"
+                                        wire:model.defer="couponCode"
+                                        wire:keydown.enter="applyCoupon"
+                                        placeholder="Ej: FDD-ABCD1234"
+                                        maxlength="20"
+                                        class="flex-1 px-3 py-2 border rounded-lg text-sm uppercase transition-colors
+                                            {{ $couponStatus === 'error' ? 'border-red-300 focus:border-red-400 focus:ring-red-200' : 'border-secondary focus:border-primary focus:ring-primary/20' }}"
+                                    >
+                                    <button 
+                                        type="button"
+                                        wire:click="applyCoupon"
+                                        wire:loading.attr="disabled"
+                                        wire:target="applyCoupon"
+                                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-dark transition disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        <svg wire:loading wire:target="applyCoupon" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span wire:loading.remove wire:target="applyCoupon">Aplicar</span>
+                                        <span wire:loading wire:target="applyCoupon">...</span>
+                                    </button>
+                                </div>
+                                {{-- Mensaje de error inline --}}
+                                @if($couponStatus === 'error' && $couponMessage)
+                                    <div class="mt-2 flex items-start gap-1.5">
+                                        <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <p class="text-xs text-red-600">{{ $couponMessage }}</p>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
 
                         <div class="border-t border-secondary pt-4 space-y-2 text-sm">

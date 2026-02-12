@@ -22,7 +22,16 @@ class Login extends Component
     public function mount(): void
     {
         if (Auth::check()) {
-            $this->redirectRoute('admin.dashboard');
+            $user = Auth::user();
+            if ($user && $user->hasAnyRole(['super-admin', 'admin'])) {
+                $this->redirectRoute('admin.dashboard');
+                return;
+            }
+
+            AuditService::logout();
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
         }
     }
 
@@ -84,15 +93,10 @@ class Login extends Component
         }
 
         if (!$user->hasAnyRole(['super-admin', 'admin'])) {
-            // First admin bootstrap if no roles assigned
-            if ($user->roles()->count() === 0) {
-                $user->assignRole('super-admin');
-            } else {
-                AuditService::loginAttempt($this->email, false);
-                throw ValidationException::withMessages([
-                    'email' => 'No tienes permisos para acceder al panel.',
-                ]);
-            }
+            AuditService::loginAttempt($this->email, false);
+            throw ValidationException::withMessages([
+                'email' => 'No tienes permisos para acceder al panel.',
+            ]);
         }
 
         Auth::login($user, true);

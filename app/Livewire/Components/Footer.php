@@ -53,16 +53,19 @@ class Footer extends Component
     
     public function render()
     {
-        $socialLinks = SocialLink::where('is_active', true)
-            ->orderBy('sort_order')
-            ->get();
+        $socialLinks = SocialLink::active()
+            ->get()
+            ->unique('platform')
+            ->values();
 
-        $contactPhone = SiteSetting::getValue('contact.phone', config('flores.phone'));
-        $contactPhoneDisplay = SiteSetting::getValue('contact.phone_display', config('flores.phone_display'));
-        $contactEmail = SiteSetting::getValue('contact.email', config('flores.email'));
-        $contactAddress = SiteSetting::getValue('contact.address', config('flores.address'));
-        $whatsappNumber = SiteSetting::getWhatsappNumber();
-        $whatsappDisplay = SiteSetting::getWhatsappDisplay();
+        $contactPhone = SiteSetting::getValue('contact.phone');
+        $contactPhoneDisplay = SiteSetting::getValue('contact.phone_display');
+        $contactEmail = SiteSetting::getValue('contact.email');
+        $contactAddress = SiteSetting::getValue('contact.address');
+
+        $whatsappRaw = SiteSetting::getValue('contact.whatsapp');
+        $whatsappNumber = $whatsappRaw ? SiteSetting::normalizeWhatsapp($whatsappRaw) : '';
+        $whatsappDisplay = $whatsappNumber ? SiteSetting::formatWhatsappDisplay($whatsappNumber) : '';
             
         $parentCategories = Category::whereNull('parent_id')
             ->where('is_active', true)
